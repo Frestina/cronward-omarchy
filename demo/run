@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Capture the installed widget showing fictional data, one PNG per state.
+#
+# Points the widget's settings at demo/cronward (host "homeserver") in
+# ~/.config/omarchy/shell.json, and for each state writes it to
+# $XDG_RUNTIME_DIR/cronward-demo, refreshes, opens the popup over IPC and
+# captures it with grim. shell.json is put back byte for byte on exit, and
+# the widget reads the real status again. Check each image before
+# committing it: it must show only the fictional jobs.
+#
+# Usage: demo/run "<x>,<y> <w>x<h>" [STATE...]   (grim region, logical pixels)
+#   default state: mixed, written to preview.png; others to demo/out/STATE.png
+set -euo pipefail
+cd "$(dirname "$0")/.."
+region=${1:?usage: demo/run "<x>,<y> <w>x<h>" [STATE...]}
+shift
+states=("$@")
+((${#states[@]})) || states=(mixed)
+id=io.github.frestina.cronward
+config=${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/shell.json
+runtime=${XDG_RUNTIME_DIR:?}
+for cmd in python3 qs grim pgrep; do command -v "$cmd" >/dev/null || { echo "demo: missing $cmd" >&2; exit 1; }; done
+pid=$(pgrep -f '^quickshell .*omarchy/shell' | head -1 || true)
+[[ -n $pid ]] || { echo "demo: omarchy-shell is not running" >&2; exit 1; }
+qs ipc --pid "$pid" show | grep -q "target $id" || { echo "demo: $id is not loaded in the shell" >&2; exit 1; }
+[[ ! -e $runtime/cronward-demo.shell.json ]] || { echo "demo: an interrupted run left $runtime/cronward-demo.shell.json; put it back as $config by hand" >&2; exit 1; }
+
+cp -p "$config" "$runtime/cronward-demo.shell.json"
+cleanup() {
+  qs ipc --pid "$pid" call "$id" close >/dev/null 2>&1 || true
+  cp -p "$runtime/cronward-demo.shell.json" "$config" && rm -f "$runtime/cronward-demo.shell.json"
+  rm -f "$runtime/cronward-demo"
+}
+trap cleanup EXIT INT TERM HUP
+
+python3 -I - "$config" "$PWD/demo/cronward" "$id" <<'PY'
+import json, sys
+path, fake, id_ = sys.argv[1:]
+data = json.load(open(path))
+def walk(o):
+    if isinstance(o, dict):
+        if o.get("id") == id_:
+            o.update(cronward=fake, host="homeserver")
+            return True
+        return any(walk(v) for v in o.values())
+    return any(walk(v) for v in o) if isinstance(o, list) else False
+if not walk(data):
+    sys.exit(f"demo: no {id_} entry in {path}")
+open(path, "w").write(json.dumps(data, indent=2) + "\n")
+PY
+sleep 2
+mkdir -p demo/out
+for state in "${states[@]}"; do
+  echo "$state" >"$runtime/cronward-demo"
+  qs ipc --pid "$pid" call "$id" refresh
+  sleep 1
+  qs ipc --pid "$pid" call "$id" open
+  sleep 1
+  out=demo/out/$state.png
+  [[ $state == mixed && $# -eq 0 ]] && out=preview.png
+  grim -g "$region" "$out"
+  echo "demo: wrote $out"
+  qs ipc --pid "$pid" call "$id" close
+  sleep 0.5
+done

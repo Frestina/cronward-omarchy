@@ -1,0 +1,83 @@
+{
+ "accounts": [
+  {
+   "expires": "2026-11-10 00:00:00 UTC",
+   "expires_soon": true,
+   "name": "personal",
+   "token": "encrypted"
+  }
+ ],
+ "host": "homeserver",
+ "jobs": [
+  {
+   "account": "personal",
+   "enabled": true,
+   "latest": {
+    "finished": 1793685840.0,
+    "job": "nightly",
+    "kind": "passed",
+    "reason": "",
+    "slot": 1793685600.0,
+    "url": "https://github.com/me/widget/actions/runs/1001"
+   },
+   "name": "nightly",
+   "next": 1793772000.0,
+   "recent": [
+    {
+     "finished": 1793599440.0,
+     "job": "nightly",
+     "kind": "passed",
+     "reason": "",
+     "slot": 1793599200.0,
+     "url": "https://github.com/me/widget/actions/runs/1000"
+    },
+    {
+     "finished": 1793685840.0,
+     "job": "nightly",
+     "kind": "passed",
+     "reason": "",
+     "slot": 1793685600.0,
+     "url": "https://github.com/me/widget/actions/runs/1001"
+    }
+   ],
+   "repo": "me/widget",
+   "running": null,
+   "schedule": "0 6 * * *",
+   "timezone": "UTC",
+   "workflow": "check.yml"
+  },
+  {
+   "account": "personal",
+   "enabled": true,
+   "latest": {
+    "finished": 1793709240.0,
+    "job": "drift",
+    "kind": "passed",
+    "reason": "",
+    "slot": 1793709000.0,
+    "url": "https://github.com/me/dotfiles/actions/runs/2001"
+   },
+   "name": "drift",
+   "next": 1793712600.0,
+   "recent": [
+    {
+     "finished": 1793709240.0,
+     "job": "drift",
+     "kind": "passed",
+     "reason": "",
+     "slot": 1793709000.0,
+     "url": "https://github.com/me/dotfiles/actions/runs/2001"
+    }
+   ],
+   "repo": "me/dotfiles",
+   "running": null,
+   "schedule": "*/30 * * * *",
+   "timezone": "UTC",
+   "workflow": "drift.yml"
+  }
+ ],
+ "last_tick": 1793711160.0,
+ "now": 1793711280.0,
+ "schema": 1,
+ "tick_error": null
+}

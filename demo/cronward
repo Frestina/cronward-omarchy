@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# A fake cronward for screenshots and trying the widget's states: prints
+# demo/fixtures/<state>.json for `status --json`, with its times moved to
+# now, and does nothing for the rest. The state is the first line of
+# $XDG_RUNTIME_DIR/cronward-demo, else "mixed". Two more states have no
+# fixture: "not-set-up" and "error". Fictional names only.
+set -euo pipefail
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+state=$(head -n1 "${XDG_RUNTIME_DIR:-/tmp}/cronward-demo" 2>/dev/null || true)
+state=${state:-mixed}
+case ${1:-} in
+  status) ;;
+  watch) sleep 1; exit 0 ;;
+  *) echo "demo: cronward $*: nothing done, this is the demo" ; exit 0 ;;
+esac
+case $state in
+  not-set-up) echo "cronward: no config at $HOME/.config/cronward/config.toml; write one with: cronward init" >&2; exit 2 ;;
+  error) echo "cronward: state.json does not read: Expecting value: line 1 column 1 (char 0)" >&2; exit 2 ;;
+esac
+fixture=$here/fixtures/$state.json
+[[ -f $fixture ]] || { echo "demo: no fixture $state" >&2; exit 2; }
+python3 -I - "$fixture" <<'PY'
+import json, sys, time
+st = json.load(open(sys.argv[1]))
+shift = time.time() - 1793711280  # the fixtures' now, 2026-11-03 13:08 UTC
+def move(o):
+    if isinstance(o, dict):
+        return {k: (v + shift if k in ("now", "last_tick", "next", "slot", "finished", "fetched",
+                                       "unreachable_since") and isinstance(v, (int, float))
+                    else move(v)) for k, v in o.items()}
+    return [move(v) for v in o] if isinstance(o, list) else o
+json.dump(move(st), sys.stdout, indent=1)
+PY

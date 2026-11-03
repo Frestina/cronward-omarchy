@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "templateVersion": "0.1.0",
+  "kind": "plugin",
+  "owner": "Frestina",
+  "repo": "cronward-omarchy",
+  "slug": "cronward",
+  "name": "cronward",
+  "author": "Frestina",
+  "id": "io.github.frestina.cronward",
+  "description": "Bar widget for cronward: whether your scheduled GitHub Actions workflows passed, failed or didn't run, from cronward's own results, with no token on this machine.",
+  "year": "2026",
+  "inspiration": "",
+  "initialized": true
+}

@@ -1,0 +1,16 @@
+{
+ "accounts": [
+  {
+   "expires": "2027-06-01 00:00:00 UTC",
+   "expires_soon": false,
+   "name": "personal",
+   "token": "encrypted"
+  }
+ ],
+ "host": "homeserver",
+ "jobs": [],
+ "last_tick": 1793711160.0,
+ "now": 1793711280.0,
+ "schema": 1,
+ "tick_error": null
+}

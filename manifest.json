@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.frestina.cronward",
+  "name": "cronward",
+  "version": "0.1.0",
+  "author": "Frestina",
+  "license": "MIT",
+  "description": "Whether the GitHub Actions workflows cronward starts on a schedule passed, failed or didn't run, from cronward's own results. Holds no token and makes no network calls of its own; works on the machine that runs cronward or on a laptop that watches it.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {"barWidget": "Cronward.qml"},
+  "barWidget": {
+    "displayName": "cronward",
+    "description": "Bar icon that stays quiet while every cronward job passes, and turns red or orange with a count when one failed or didn't run, or the main machine stopped ticking. Click for each job's result and next slot; middle-click to check now.",
+    "category": "Developer Tools",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "host": "",
+      "cronward": "cronward",
+      "refreshSec": 60
+    },
+    "schema": [
+      { "key": "host", "type": "string", "label": "Main machine", "defaultValue": "", "description": "Blank when cronward runs on this machine. On a viewer, the main machine as you would type it after ssh, the same as for cronward install --viewer." },
+      { "key": "cronward", "type": "string", "label": "cronward command", "defaultValue": "cronward", "description": "The command or its full path. The default also finds ~/.local/bin/cronward when the shell's PATH lacks it." },
+      { "key": "refreshSec", "type": "integer", "label": "Refresh interval (seconds)", "min": 30, "max": 3600, "step": 30, "defaultValue": 60, "description": "How often it reads cronward's status. Local and cheap: on a viewer it reads the copy cronward fetched, and Check now fetches a new one." }
+    ]
+  }
+}

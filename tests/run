@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# The portable checks: the template's structure check, the view against the
+# fixtures (in UTC), and the shell scripts with bash -n and, when it is
+# installed, shellcheck.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+node scripts/check.mjs
+TZ=UTC node --test tests/*.test.mjs
+for f in tests/run demo/run demo/cronward; do bash -n "$f"; done
+if command -v shellcheck >/dev/null; then
+  shellcheck tests/run demo/run demo/cronward
+else
+  echo "shellcheck not installed, skipped" >&2
+fi

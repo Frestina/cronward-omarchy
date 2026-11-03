@@ -1,0 +1,24 @@
+{
+  "status": "partial",
+  "input_commit": null,
+  "date": "2026-11-04",
+  "platform": "Arch Linux, Omarchy 4.0.6-1, Hyprland 0.56.2, Quickshell 0.3.2, one 2560x1600 monitor at scale 2, horizontal bar",
+  "omarchy_version": "4.0.6-1",
+  "commands": [
+    "./tests/run",
+    "omarchy plugin validate <checkout>",
+    "omarchy plugin enable io.github.frestina.cronward, with host set to the main machine on a viewer laptop",
+    "qs ipc call io.github.frestina.cronward open|check|close",
+    "demo/run with every state"
+  ],
+  "results": [
+    "Portable checks and the Omarchy validator pass.",
+    "On a viewer of a real main machine, the bar shows its one passed job dimmed, and the popup its result, next slot and 'as of' time.",
+    "Check now over IPC ran cronward watch and moved 'as of' forward.",
+    "Every fixture state, plus not set up and error, rendered distinct in the installed widget (demo/run)."
+  ],
+  "limitations": [
+    "Not yet tried: a vertical bar, a theme switch, several monitors, and clicking each button by hand (Config, token key, Set up with agent, Ask agent, a row's link).",
+    "Not yet tried on the main machine itself (host blank) with a real cronward."
+  ]
+}
