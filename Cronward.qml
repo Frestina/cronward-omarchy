@@ -851,20 +851,28 @@ Panel {
           foreground: root.barForeground
           strength: root.picking && root.page === "workflows" ? 0.2 : 0.12
 
-          // While the list is asked for: a bar sweeping along the rule.
-          Rectangle {
-            id: busyBar
+          // While the list is asked for: a bar in the theme's accent sweeping
+          // along the rule, clipped to it so it never leaves the popup.
+          Item {
+            id: busyTrack
             visible: root.picking && root.page === "workflows"
             y: -1
-            width: parent.width * 0.3
+            width: parent.width
             height: 3
-            radius: 1.5
-            color: Color.accent
+            clip: true
 
-            SequentialAnimation on x {
-              running: busyBar.visible && !Style.reduceMotion
-              loops: Animation.Infinite
-              NumberAnimation { from: -busyBar.width; to: pickerRule.width; duration: 1100; easing.type: Easing.InOutQuad }
+            Rectangle {
+              id: busyBar
+              width: busyTrack.width * 0.3
+              height: busyTrack.height
+              radius: height / 2
+              color: Color.accent
+
+              SequentialAnimation on x {
+                running: busyTrack.visible && !Style.reduceMotion
+                loops: Animation.Infinite
+                NumberAnimation { from: -busyBar.width; to: busyTrack.width; duration: 1100; easing.type: Easing.InOutQuad }
+              }
             }
           }
         }
