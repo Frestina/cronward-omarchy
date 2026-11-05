@@ -30,7 +30,9 @@ regardless:
 
 1. **Is it still so?** Run `cronward status --json` (with `--on <host>`) and
    find the job. If its latest result has passed since, say so, and explain
-   what the earlier one was.
+   what the earlier one was. `status` exits 1 when a job's latest result is
+   not passed, or on a viewer when the main machine can't be reached or
+   stopped ticking: with the JSON printed, that is the answer, not an error.
 2. **Gather the facts** for its kind, below.
 3. **Explain in plain words, briefly**: what happened and why, as far as you
    can tell; whether it matters; and what the user could do, from least to
@@ -47,6 +49,11 @@ cronward started it as it should; the cause is in the repo or on GitHub.
   <owner/name> --log-failed` (the id is the number at the end of the run's
   URL). Otherwise give the user the URL, or ask them to paste the failing
   step's log.
+- If `gh` says not found (404) for a repo the job runs in, the user may
+  have more than one GitHub account, with another one active in `gh`.
+  `gh auth status` lists the accounts signed in. If the repo owner's is
+  there, ask before `gh auth switch --user <account>`, and switch back once
+  you have read the log. Otherwise give the user the URL.
 - Explain the failing step. If the repo's clone is here, look at the
   workflow and the code it ran, and offer a fix as a change for the user to
   review.
