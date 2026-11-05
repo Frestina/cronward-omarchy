@@ -23,11 +23,14 @@ To see the states without a real cronward, `demo/run "<x>,<y> <w>x<h>"
 state to `demo/out/`, and puts `~/.config/omarchy/shell.json` back. The
 states are the fixture names plus `not-set-up` and `error`, and for the
 workflow picker `workflows-NAME` for each `fixtures/workflows/NAME.json`,
-plus `workflows-unreachable` and `workflows-readonly`. With no state it
+plus `workflows-unreachable` and `workflows-readonly`. For the add form,
+`add-form` shows it, and `add-added`, `add-refused` and `add-unreachable`
+press Enter in it with `wtype` and show what came of it. With no state it
 writes `preview.png` from `mixed`; check that it shows only fictional names
 before committing it.
 
-Over IPC: `qs ipc call io.github.frestina.cronward open|close|toggle|refresh|check|workflows`.
+Over IPC: `qs ipc call io.github.frestina.cronward open|close|toggle|refresh|check|workflows`,
+and `add ACCOUNT OWNER/REPO FILE` for the add form.
 
 ## By hand, before a release
 
@@ -37,6 +40,8 @@ Over IPC: `qs ipc call io.github.frestina.cronward open|close|toggle|refresh|che
   right click.
 - Config, the key and Set up with agent open a terminal or the agent; on a
   viewer, through `cronward --on`.
+- Add job from the picker: the job shows in the bar after the add, and a
+  refused add says why.
 
 Remove with `omarchy plugin remove io.github.frestina.cronward`, or delete the
 link. The widget keeps no files.

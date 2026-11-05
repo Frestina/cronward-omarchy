@@ -44,6 +44,18 @@ own. Every change is a cronward command.
   owner is the owner of most of its repos: its repos show without it
   (`label`), others in full, and its token page tooltip names it. The agent
   always gets the full `owner/name`.
+- The add form: `jobNames()` gathers the names cronward has (the status's
+  and the picker's), `jobName()` offers `REPO-WORKFLOW` that is not one of
+  them, `describeSchedule()` and `scheduleHint()` say common cron lines in
+  words with their time zone, and `addProblem()` checks the form as cronward
+  would (name, 5 fields, a zone's characters) before anything runs.
+  `addArgs()` is `cronward add` as a list, with `--account` set to the
+  account the picker listed the repo under, through `onMain()`.
+  `addResult()` sorts its run: exit 0 is added (cronward's lines, without
+  its "try it now" hint), the `--on` failures as the picker's
+  (`onMainFailed()`), anything else refused, with cronward's own message.
+  cronward cannot see a workflow's triggers, so the form is offered for
+  every workflow and says `workflow_dispatch:` is needed.
 - `setupWorkflowPrompt()` is `setupPrompt()` plus the picked repo and
   workflow file, as data. `addAccountLine()` reads the new account's name in
   the terminal and runs `token set` with it, on the main machine.
@@ -64,8 +76,8 @@ own. Every change is a cronward command.
   every monitor's copy reads the status again (`bar.moduleWidgets`). Its
   notices are cronward's own, from the viewer's record, so a check gives no
   notice the hourly timer would not. On the main machine, a fresh status.
-- The popup has two pages: the jobs (`status`) and the workflow picker
-  (`workflows`). The picker runs `workflows --json` in a third `Process`
+- The popup has three pages: the jobs (`status`), the workflow picker
+  (`workflows`) and the add form (`add`). The picker runs `workflows --json` in a third `Process`
   when it opens or on <kbd>r</kbd>, never on the timer, since it asks
   GitHub for every repo. Its list scrolls in a `Flickable` capped to the
   screen's room, as the shell's own panels do. <kbd>Esc</kbd> goes back to
@@ -76,6 +88,13 @@ own. Every change is a cronward command.
   headers, and `bareSummary` for the one folded card of repos with no
   workflows. "On cronward" is the theme's `green`, else `color2`, else the
   accent.
+- The add form opens from a workflow's + (`startAdd()`), with the name field
+  focused. While a field has focus the panel's key catcher is `blocked`, so
+  j, k, x and space type; Enter in a field adds, Esc goes back to the
+  picker. `cronward add` runs in a fourth `Process`. Added: back to the jobs
+  with cronward's lines over them until the popup closes, and Check now, so
+  a viewer fetches the status with the new job. Otherwise the form stays,
+  with the reason.
 - `BarIconButton`: `active` unless quiet, `activeColor` urgent for `bad`
   and the theme's orange for `warn`, `dimmed` when every job passed and
   nothing is running. Vertical bars show only the icon.
@@ -86,7 +105,8 @@ own. Every change is a cronward command.
   accent, read from `colors.toml` and read again when the palette changes.
 - All text is rendered with `Text.PlainText`; a test checks every `Text`.
 - IPC target `io.github.frestina.cronward`: `open`, `close`, `toggle`,
-  `refresh`, `check`, `workflows` (opens the picker).
+  `refresh`, `check`, `workflows` (opens the picker), `add ACCOUNT REPO
+  FILE` (opens the add form).
 
 ## `demo/`
 
@@ -96,13 +116,16 @@ own. Every change is a cronward command.
   a list (with a job, a workflow turned off, GitHub's own workflows and
   repos with none), an account with an error, a repo with an error, and no
   repos.
+- `fixtures/add/`: what `cronward add` prints when it added a job, and its
+  stderr when GitHub's check refused one.
 - `cronward`: a fake that prints the fixture named in
   `$XDG_RUNTIME_DIR/cronward-demo` with its times moved to now, or the
   stderr of the not-set-up and error states. It takes `--on HOST` as
-  cronward does, and answers `workflows --json` from
-  `fixtures/workflows/`.
+  cronward does, answers `workflows --json` from
+  `fixtures/workflows/`, and `add` from `fixtures/add/`.
 - `run`: points the widget at the fake in `shell.json`, captures each state
-  with `grim`, and puts `shell.json` back byte for byte on exit.
+  with `grim` (the add states open the form over IPC and press Enter with
+  `wtype`), and puts `shell.json` back byte for byte on exit.
 
 Nothing runs with elevated privileges, and nothing is installed outside the
 plugin folder. The widget keeps no files; removing it leaves nothing behind.

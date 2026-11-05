@@ -1,0 +1,2 @@
+cronward: the token for personal cannot read the workflows of me/widget (Resource not accessible by personal access token). Give it Actions: read and write on me/widget at https://github.com/settings/personal-access-tokens, then run this again.
+Nothing was added.

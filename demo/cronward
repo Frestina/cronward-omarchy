@@ -6,7 +6,10 @@
 # fixture: "not-set-up" and "error". A state "workflows-NAME" shows the
 # mixed status, and prints demo/fixtures/workflows/NAME.json for `workflows
 # --json` (else list.json); "workflows-unreachable" and "workflows-readonly"
-# fail as ssh and a key that only reads the status would. Fictional names only.
+# fail as ssh and a key that only reads the status would. `add` prints
+# demo/fixtures/add/added.txt, whatever job it is given; the states
+# "add-refused" and "add-unreachable" show the mixed status, and make `add`
+# refuse as GitHub's check would, or fail as ssh would. Fictional names only.
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 state=$(head -n1 "${XDG_RUNTIME_DIR:-/tmp}/cronward-demo" 2>/dev/null || true)
@@ -25,6 +28,14 @@ case ${1:-} in
     sleep 1; cat "$here/fixtures/workflows/$name.json"
     # cronward exits 2 when an account's repos could not be listed.
     [[ $name == account-error ]] && exit 2; exit 0 ;;
+  add)
+    sleep 1
+    case $state in
+      add-refused) cat "$here/fixtures/add/refused.txt" >&2; exit 1 ;;
+      add-unreachable) printf '%s\n' "ssh: connect to host homeserver port 22: Connection refused" \
+        "cronward: cannot run cronward on homeserver: ssh failed (above)" >&2; exit 2 ;;
+    esac
+    cat "$here/fixtures/add/added.txt"; exit 0 ;;
   watch) sleep 1; exit 0 ;;
   *) echo "demo: cronward $*: nothing done, this is the demo" ; exit 0 ;;
 esac
@@ -32,7 +43,7 @@ case $state in
   not-set-up) echo "cronward: no config at $HOME/.config/cronward/config.toml; write one with: cronward init" >&2; exit 2 ;;
   error) echo "cronward: state.json does not read: Expecting value: line 1 column 1 (char 0)" >&2; exit 2 ;;
 esac
-[[ $state == workflows-* ]] && state=mixed
+[[ $state == workflows-* || $state == add-* ]] && state=mixed
 fixture=$here/fixtures/$state.json
 [[ -f $fixture ]] || { echo "demo: no fixture $state" >&2; exit 2; }
 python3 -I - "$fixture" <<'PY'

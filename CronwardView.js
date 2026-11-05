@@ -235,24 +235,143 @@ function picker(run, host) {
   }
   var err = String(run.stderr || "")
   var reason = lastLine(err)
-  if (/this key only reads the status/.test(err))
-    return { kind: "readonly", accounts: [], message: "The ssh login to " + where + " only reads "
-      + "the status, so this machine cannot list its workflows. Listing and setting up need a "
-      + "login that can run commands there, or use the widget on " + where + " itself." }
-  if (/unrecognized arguments|invalid choice|is not a cronward command/.test(err))
-    return { kind: "old", accounts: [], message: "cronward " + (host ? "here or on " + host + " " : "")
-      + "is too old to list workflows: update it (`workflows --json`" + (host ? ", and `--on`" : "")
-      + " came after v0.1.0)." }
-  if (/ssh failed/.test(reason)) {
-    var lines = err.trim().split("\n")
-    var why = lines.length > 1 ? lines[lines.length - 2].trim().replace(/^ssh: /, "") : ""
-    return { kind: "unreachable", accounts: [], message: "Cannot reach " + where + " over ssh"
-      + (why ? ": " + why : "") + "." }
-  }
+  var failed = onMainFailed(err, host, "list its workflows",
+    "list workflows: update it (`workflows --json`" + (host ? ", and `--on`" : "") + " came after v0.1.0)")
+  if (failed) { failed.accounts = []; return failed }
   if (/^no accounts in /.test(reason))
     return { kind: "list", accounts: [], message: "No accounts on " + where + " yet: add one below." }
   return { kind: "error", accounts: [],
            message: reason || "`cronward workflows` exited " + run.exitCode }
+}
+
+// The ways `cronward --on HOST ...` fails before the command itself answers:
+// an ssh login that only reads the status, a cronward too old for the
+// command or for `--on`, or ssh failing. null when it is none of them.
+function onMainFailed(err, host, doing, tooOld) {
+  var where = host || "this machine"
+  if (/this key only reads the status/.test(err))
+    return { kind: "readonly", message: "The ssh login to " + where + " only reads the status, "
+      + "so this machine cannot " + doing + ". That needs a login that can run commands there, "
+      + "or use the widget on " + where + " itself." }
+  if (/unrecognized arguments|invalid choice|is not a cronward command/.test(err))
+    return { kind: "old", message: "cronward " + (host ? "here or on " + host + " " : "")
+      + "is too old to " + tooOld + "." }
+  if (/ssh failed/.test(lastLine(err))) {
+    var lines = err.trim().split("\n")
+    var why = lines.length > 1 ? lines[lines.length - 2].trim().replace(/^ssh: /, "") : ""
+    return { kind: "unreachable", message: "Cannot reach " + where + " over ssh"
+      + (why ? ": " + why : "") + "." }
+  }
+  return null
+}
+
+// --- adding a job from the picker -------------------------------------------
+// For a workflow that already has `workflow_dispatch:`. cronward cannot see
+// the trigger (its token reads no files), so the form says so and the agent
+// stays one click away; `cronward add` checks the rest with GitHub.
+
+var JOB_NAME = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/ // cronward's own
+var DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+var DEFAULT_SCHEDULE = "0 6 * * *"
+
+// The names cronward already has: the status's jobs and the picker's.
+function jobNames(view, pickerView) {
+  var names = []
+  var rows = (view && view.rows) || []
+  var accounts = (pickerView && pickerView.accounts) || []
+  var add = function(n) { if (n && names.indexOf(n) < 0) names.push(String(n)) }
+  rows.forEach(function(r) { add(r.name) })
+  accounts.forEach(function(a) {
+    a.repos.forEach(function(r) { r.workflows.forEach(function(w) { w.jobs.forEach(add) }) })
+  })
+  return names
+}
+
+// A first name for the job: the repo's name and the workflow's, as cronward
+// allows, and not one it has already.
+function jobName(repo, file, taken) {
+  var base = (String(repo).split("/").pop() + "-" + String(file).replace(/\.ya?ml$/i, ""))
+    .replace(/[^A-Za-z0-9_.-]+/g, "-").slice(0, 60).replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, "") || "job"
+  var name = base
+  for (var n = 2; (taken || []).indexOf(name) >= 0; n++) name = base + "-" + n
+  return name
+}
+
+function clean(text) {
+  return String(text || "").trim().split(/\s+/).filter(function(w) { return w !== "" }).join(" ")
+}
+
+// The common schedules in words; "" for the rest, which cronward reads all the same.
+function describeSchedule(schedule) {
+  var f = clean(schedule).split(" ")
+  if (f.length !== 5 || !/^\d{1,2}$/.test(f[0]) || +f[0] > 59) return ""
+  var minute = pad(+f[0])
+  if (f[1] === "*" && f[2] === "*" && f[3] === "*" && f[4] === "*") return "every hour at :" + minute
+  if (!/^\d{1,2}$/.test(f[1]) || +f[1] > 23 || f[3] !== "*") return ""
+  var at = " at " + pad(+f[1]) + ":" + minute
+  if (f[2] === "*" && f[4] === "*") return "every day" + at
+  if (f[2] === "*" && f[4] === "1-5") return "Monday to Friday" + at
+  if (f[2] === "*" && /^[0-7]$/.test(f[4])) return "every " + DAYS[+f[4]] + at
+  if (/^\d{1,2}$/.test(f[2]) && +f[2] >= 1 && +f[2] <= 31 && f[4] === "*")
+    return "on day " + +f[2] + " of each month" + at
+  return ""
+}
+
+// What the schedule line under the field says.
+function scheduleHint(schedule, timezone) {
+  var words = describeSchedule(schedule)
+  var zone = clean(timezone)
+  var tz = zone === "local" ? (" in the time zone of the main machine")
+    : zone ? " in " + zone : ", in the config's time zone (UTC unless set)"
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) + tz
+    : "5 fields, as in GitHub's schedule: minute, hour, day, month, weekday" + tz
+}
+
+// What is wrong with the form before cronward is asked; "" when nothing is.
+function addProblem(form, taken) {
+  var name = clean(form.name)
+  if (!name) return "Give the job a name."
+  if (!JOB_NAME.test(name)) return "A job name is letters, digits, '.', '_' and '-', up to 64."
+  if ((taken || []).indexOf(name) >= 0) return "There is a job " + name + " already."
+  if (clean(form.schedule).split(" ").length !== 5 || !/^[A-Za-z0-9*,\/ -]+$/.test(clean(form.schedule)))
+    return "A schedule is 5 fields, such as " + DEFAULT_SCHEDULE + " for every day at 06:00."
+  if (clean(form.timezone) && !/^[A-Za-z0-9_+\/-]+$/.test(clean(form.timezone)))
+    return "A time zone is a name such as Europe/Oslo, UTC or local."
+  return ""
+}
+
+// `cronward add`, on the main machine. The account is the one the picker
+// listed the repo under, so cronward need not guess between tokens.
+function addArgs(host, form) {
+  var args = ["add", clean(form.name), "--repo", form.repo, "--workflow", form.file,
+              "--schedule", clean(form.schedule)]
+  if (form.account) args = args.concat(["--account", form.account])
+  if (clean(form.timezone)) args = args.concat(["--timezone", clean(form.timezone)])
+  return onMain(host, args)
+}
+
+// cronward's own lines, without its "cronward: " in front.
+function said(text) {
+  return String(text || "").trim().split("\n")
+    .map(function(l) { return l.replace(/^cronward: /, "").trim() })
+    .filter(function(l) { return l !== "" }).join("\n")
+}
+
+// run: {started, exitCode, stdout, stderr} of `cronward [--on HOST] add ...`.
+// It exits 0 when the job is in the config, 1 when GitHub's check refused it,
+// 2 for a config error; cronward's own message says why.
+function addResult(run, host) {
+  if (!run.started || run.exitCode === 127)
+    return { kind: "missing", message: "cronward is not installed here: no `cronward` on the "
+      + "shell's PATH and no ~/.local/bin/cronward." }
+  if (run.exitCode === 0)
+    return { kind: "added", message: said(run.stdout).split("\n").filter(function(l) {
+      return !/^try it now with: /.test(l) }).join("\n") }
+  var err = String(run.stderr || "")
+  var failed = onMainFailed(err, host, "add jobs", "add jobs" + (host ? " through `--on`" : "")
+    + ": update it")
+  if (failed) return failed
+  return { kind: "refused", message: said(err) || "`cronward add` exited " + run.exitCode }
 }
 
 function explainPrompt(row, host, pluginDir) {
@@ -404,6 +523,8 @@ if (typeof module !== "undefined") {
     checkArgs: checkArgs, onMain: onMain, processArgv: processArgv, shellLine: shellLine,
     terminal: terminal, open: open, agent: agent, setupPrompt: setupPrompt,
     setupWorkflowPrompt: setupWorkflowPrompt, setupTip: setupTip, workflowsArgs: workflowsArgs,
-    addAccountLine: addAccountLine, picker: picker,
+    addAccountLine: addAccountLine, picker: picker, DEFAULT_SCHEDULE: DEFAULT_SCHEDULE,
+    jobNames: jobNames, jobName: jobName, describeSchedule: describeSchedule,
+    scheduleHint: scheduleHint, addProblem: addProblem, addArgs: addArgs, addResult: addResult,
     explainPrompt: explainPrompt, classify: classify, model: model }
 }

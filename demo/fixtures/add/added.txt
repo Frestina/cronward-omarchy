@@ -1,0 +1,3 @@
+added widget-release to /home/me/.config/cronward/config.toml: me/widget release.yml, 0 6 * * * UTC, account personal
+next slot: Nov 4 06:00
+try it now with: cronward run widget-release --wait

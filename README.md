@@ -46,7 +46,8 @@ machine. Under each account, each repo is a card named without the
 account's owner, folded until you click it; its header says how many
 workflows it has, and a green mark how many are on cronward already. Open,
 a workflow that is a job names it in green. Each has an agent button that
-sets a schedule for that workflow with you. Repos with no workflows share
+sets a schedule for that workflow with you, and a + that adds it as a job
+from a form (below). Repos with no workflows share
 one folded card, and an account's header folds it all. GitHub's own
 workflows, such as `dependabot-updates`, are left out, as nothing can start
 them. Each account has its own section, with a button to GitHub's token
@@ -56,6 +57,18 @@ account** stores a token for another GitHub account in a terminal on the
 main machine; cronward adds the account to its config itself (its `main`
 from 2026-11-05). The list asks GitHub for every repo, so it runs only when
 you open it, or press <kbd>r</kbd> there; <kbd>Esc</kbd> goes back.
+
+**Add job** (the + on a workflow) adds it as a job without the agent, with
+`cronward add` on the main machine: a job name (one cronward has not got
+yet is filled in), a cron schedule, said back in words for the common ones,
+and a time zone if not the config's. The repo, workflow and account are the
+ones you picked. cronward checks the job with GitHub before it writes the
+config; when it refuses, the form shows why, in its words. Once added, the
+popup goes back to the jobs and reads the status again (on a laptop, it
+fetches it first). The workflow needs `workflow_dispatch:` already: cronward
+cannot see a workflow's triggers before its first start, so the form says so,
+and a job without it shows as didn't run, with the reason. When you are not
+sure, **Set up with agent** adds it.
 
 **Set up** (on the list, **Set up with agent**), at the bottom of the popup, has it put a new workflow
 on cronward with you, following [a setup guide](docs/AGENT_SETUP.md) and
@@ -73,7 +86,7 @@ ask before a test run or a push.
   - On the machine that runs cronward: nothing else.
   - On a laptop: cronward installed as a viewer of the main machine
     (`cronward install --viewer homeserver`). For the buttons that change
-    something there (Config, storing a token, Set up with agent), an ssh
+    something there (Config, storing a token, Add job, Set up with agent), an ssh
     login to it that can run commands, as `cronward --on` needs.
 
 ## Install
@@ -102,7 +115,7 @@ machine through `cronward --on <host>`.
 - **Token**: GitHub's fine-grained token page, to give a token access to
   another repo.
 - **Workflows**: the list above (`cronward workflows --json`). Its agent
-  buttons, **Add account** (`cronward token set <name>`) and each account's
+  buttons, **Add job** (`cronward add`), **Add account** (`cronward token set <name>`) and each account's
   token page button.
 - **The key** next to a missing or expiring token: a terminal running
   `cronward token set <account>`. You type the token there; the widget never

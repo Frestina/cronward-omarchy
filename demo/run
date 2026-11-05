@@ -10,6 +10,8 @@
 #
 # Usage: demo/run "<x>,<y> <w>x<h>" [STATE...]   (grim region, logical pixels)
 #   default state: mixed, written to preview.png; others to demo/out/STATE.png
+#   add-form shows the add form; add-added, add-refused and add-unreachable
+#   press Enter in it (with wtype) and show what came of it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 region=${1:?usage: demo/run "<x>,<y> <w>x<h>" [STATE...]}
@@ -57,6 +59,15 @@ for state in "${states[@]}"; do
   if [[ $state == workflows-* ]]; then
     qs ipc --pid "$pid" call "$id" workflows
     sleep 1.5
+  elif [[ $state == add-* ]]; then
+    # The form for me/widget's release.yml; but for add-form, Enter adds it.
+    qs ipc --pid "$pid" call "$id" add personal me/widget release.yml
+    sleep 1
+    if [[ $state != add-form ]]; then
+      command -v wtype >/dev/null || { echo "demo: $state needs wtype to press Enter" >&2; exit 1; }
+      wtype -k Return
+      sleep 2.5
+    fi
   else
     qs ipc --pid "$pid" call "$id" open
   fi

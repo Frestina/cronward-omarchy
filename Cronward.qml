@@ -54,6 +54,23 @@ Panel {
   property var openRepos: ({})
   property var closedAccounts: ({})
 
+  // The add page: a form that puts one picked workflow on cronward with
+  // `cronward [--on HOST] add`. addTarget is the workflow and its account.
+  property var addTarget: null
+  property string addName: ""
+  property string addSchedule: View.DEFAULT_SCHEDULE
+  property string addZone: ""
+  property bool adding: false
+  property bool addStarted: false
+  property int addExitCode: 0
+  // What View.addResult() made of cronward's answer, when it was not "added".
+  property var addOutcome: null
+  // cronward's lines after an add, shown over the jobs until the popup closes.
+  property string statusNote: ""
+  readonly property var addForm: addTarget ? { account: addTarget.account, repo: addTarget.repo,
+    file: addTarget.file, name: addName, schedule: addSchedule, timezone: addZone } : null
+  readonly property string addProblem: addForm ? View.addProblem(addForm, View.jobNames(view, pickerView)) : ""
+
   function toggled(map, key) {
     var next = {}
     for (var k in map) next[k] = map[k]
@@ -76,6 +93,8 @@ Panel {
   readonly property string caption: {
     if (page === "workflows")
       return picking ? "Asking GitHub…" : "Workflows · " + (host || "this machine")
+    if (page === "add")
+      return adding ? "Adding…" : "Add a job · " + (host || "this machine")
     if (checking) return "Checking…"
     if (!view) return loading ? "Reading status…" : ""
     if (view.header) return view.header
@@ -175,6 +194,52 @@ Panel {
     run(View.agent(View.setupWorkflowPrompt(root.host, root.pluginDir, w.repo, w.file)))
   }
 
+  // The form for a picked workflow, with a name cronward has not got yet.
+  function startAdd(w, account) {
+    addTarget = { account: String(account || ""), repo: w.repo, file: w.file,
+                  name: w.name || "", jobs: w.jobs || [] }
+    addName = View.jobName(w.repo, w.file, View.jobNames(root.view, root.pickerView))
+    addSchedule = View.DEFAULT_SCHEDULE
+    addZone = ""
+    addOutcome = null
+    page = "add"
+    if (!root.opened) root.open()
+    Qt.callLater(function() { nameField.forceActiveFocus() })
+  }
+
+  function backFromAdd() {
+    if (adding) return
+    page = pickerView ? "workflows" : "status"
+    keyCatcher.forceActiveFocus()
+  }
+
+  function submitAdd() {
+    if (!addForm || adding || addProblem !== "") return
+    adding = true
+    addOutcome = null
+    addStarted = false
+    addExitCode = 0
+    addProc.command = View.processArgv(root.cronward, View.addArgs(root.host, addForm))
+    addProc.running = true
+  }
+
+  // Added: back to the jobs, where it shows once the status is read again; on
+  // a viewer that is a check, since its copy of the status is the hourly one.
+  function finishAdd() {
+    adding = false
+    var r = View.addResult({ started: addStarted, exitCode: addExitCode,
+                             stdout: addOut.text, stderr: addErr.text }, root.host)
+    if (r.kind !== "added") {
+      addOutcome = r
+      return
+    }
+    statusNote = r.message
+    addTarget = null
+    page = "status"
+    keyCatcher.forceActiveFocus()
+    root.checkNow()
+  }
+
   function addAccount() { run(View.terminal(View.addAccountLine(root.cronward, root.host))) }
 
   function openTokenPage() { run("xdg-open " + View.quote(View.TOKEN_PAGE)) }
@@ -203,7 +268,11 @@ Panel {
     root.okColor = found.green || found.color2 || Color.accent
   }
 
-  onOpenedChanged: if (opened) refresh(); else page = "status"
+  onOpenedChanged: {
+    if (opened) return refresh()
+    page = "status"
+    if (!adding) statusNote = ""
+  }
   onHostChanged: { pickerView = null; refresh() }
   onCronwardChanged: refresh()
 
@@ -218,6 +287,10 @@ Panel {
     function refresh(): void { root.refreshAll() }
     function check(): void { root.checkNow() }
     function workflows(): void { root.openWorkflows() }
+    // The add form for one workflow, as the picker's add button opens it.
+    function add(account: string, repo: string, file: string): void {
+      root.startAdd({ repo: repo, file: file, name: "", jobs: [] }, account)
+    }
   }
 
   // Both streams finish and exited fires before running drops, so finish()
@@ -249,6 +322,16 @@ Panel {
     onRunningChanged: if (!running) root.finishWorkflows()
     stdout: StdioCollector { id: wfOut; waitForEnd: true }
     stderr: StdioCollector { id: wfErr; waitForEnd: true }
+  }
+
+  // `cronward [--on HOST] add JOB ...`, argv as a list, never a shell line.
+  Process {
+    id: addProc
+    onStarted: root.addStarted = true
+    onExited: function(exitCode) { root.addExitCode = exitCode }
+    onRunningChanged: if (!running) root.finishAdd()
+    stdout: StdioCollector { id: addOut; waitForEnd: true }
+    stderr: StdioCollector { id: addErr; waitForEnd: true }
   }
 
   FileView {
@@ -321,11 +404,21 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      // Esc on the picker goes back to the status; on the status it closes.
-      onCloseRequested: if (root.page === "workflows") root.page = "status"; else root.close()
-      onTabRequested: function(direction) { root.switchPanel(direction) }
+      // A form field owns its keys (j, k, x, space…); Esc and Enter there are its own.
+      blocked: nameField.activeFocus || cronField.activeFocus || zoneField.activeFocus
+      // Esc on the form goes back to the picker, on the picker to the status;
+      // on the status it closes.
+      onCloseRequested: {
+        if (root.page === "add") root.backFromAdd()
+        else if (root.page === "workflows") root.page = "status"
+        else root.close()
+      }
+      onTabRequested: function(direction) {
+        if (root.page === "add") nameField.forceActiveFocus()
+        else root.switchPanel(direction)
+      }
       onTextKey: function(t) {
-        if (t !== "r") return
+        if (t !== "r" || root.page === "add") return
         if (root.page === "workflows") root.fetchWorkflows()
         else root.checkNow()
       }
@@ -381,12 +474,13 @@ Panel {
           }
 
           PanelActionButton {
-            visible: root.page === "workflows"
+            visible: root.page === "workflows" || root.page === "add"
             iconText: "󰁍"
-            tooltipText: "Back to the jobs (Esc)"
+            tooltipText: root.page === "add" ? "Back to the workflows (Esc)" : "Back to the jobs (Esc)"
             foreground: root.barForeground
             fontFamily: root.bar.fontFamily
-            onClicked: root.page = "status"
+            enabled: !root.adding
+            onClicked: if (root.page === "add") root.backFromAdd(); else root.page = "status"
           }
 
           PanelActionButton {
@@ -424,6 +518,18 @@ Panel {
           visible: root.page === "status"
           width: parent.width
           spacing: content.spacing
+
+          // ---------- Just added from the form: cronward's own lines ----------
+          Text {
+            visible: root.statusNote !== ""
+            width: parent.width
+            textFormat: Text.PlainText
+            text: root.statusNote
+            wrapMode: Text.Wrap
+            color: root.okColor
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+          }
 
           // ---------- Not found, not set up, no jobs, or an error ----------
           Text {
@@ -616,7 +722,7 @@ Panel {
         // ---------- The picker: each account's repos and workflows ----------
         PanelSeparator {
           id: pickerRule
-          visible: root.page === "workflows"
+          visible: root.page === "workflows" || root.page === "add"
           foreground: root.barForeground
         }
 
@@ -907,6 +1013,19 @@ Panel {
                             }
                           }
 
+                          // Add it as a job from a form: for a workflow that already has
+                          // workflow_dispatch:, which cronward cannot see, so the form says so.
+                          PanelActionButton {
+                            iconText: "󰐕"
+                            tooltipText: (flow.modelData.jobs.length ? "Add another job for " : "Add a job for ")
+                              + flow.modelData.file + ", from a form"
+                            size: Style.space(18)
+                            fontSize: Style.font.caption
+                            foreground: root.barForeground
+                            fontFamily: root.bar.fontFamily
+                            onClicked: root.startAdd(flow.modelData, account.modelData.name)
+                          }
+
                           PanelActionButton {
                             iconText: "󰚩"
                             tooltipText: View.setupTip(flow.modelData)
@@ -1022,6 +1141,184 @@ Panel {
           }
         }
 
+        // ---------- The add form: one picked workflow, as a job ----------
+        Column {
+          id: addPage
+          visible: root.page === "add"
+          width: parent.width
+          spacing: Style.space(6)
+
+          // The workflow and account, as the picker listed them.
+          Rectangle {
+            width: parent.width
+            implicitHeight: addCard.implicitHeight + Style.space(16)
+            radius: Style.cornerRadius
+            color: root.dim(0.04)
+            border.width: 1
+            border.color: root.dim(0.12)
+
+            Column {
+              id: addCard
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.top: parent.top
+              anchors.margins: Style.space(8)
+              spacing: Style.space(3)
+
+              Text {
+                width: parent.width
+                textFormat: Text.PlainText
+                text: root.addTarget ? root.addTarget.repo : ""
+                color: root.barForeground
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.body
+                font.bold: true
+                elide: Text.ElideRight
+              }
+
+              Text {
+                width: parent.width
+                textFormat: Text.PlainText
+                text: root.addTarget ? [root.addTarget.file, root.addTarget.name]
+                  .filter(function(t) { return t !== "" }).join(" · ")
+                  + " · token of " + root.addTarget.account : ""
+                color: root.dim(0.6)
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+                elide: Text.ElideRight
+              }
+
+              Text {
+                visible: !!root.addTarget && root.addTarget.jobs.length > 0
+                width: parent.width
+                textFormat: Text.PlainText
+                text: root.addTarget ? "󰄬 on cronward already: " + root.addTarget.jobs.join(", ") : ""
+                color: root.okColor
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+                elide: Text.ElideRight
+              }
+            }
+          }
+
+          Item { width: 1; height: Style.space(2) }
+
+          Text {
+            textFormat: Text.PlainText
+            text: "Job name"
+            color: root.dim(0.6)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+          }
+
+          TextField {
+            id: nameField
+            width: parent.width
+            text: root.addName
+            onTextChanged: if (text !== root.addName) root.addName = text
+            enabled: !root.adding
+            foreground: root.barForeground
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.bodySmall
+            horizontalPadding: Style.spacing.controlGap
+            verticalPadding: Style.spacing.controlPaddingY
+            onAccepted: root.submitAdd()
+            Keys.onEscapePressed: root.backFromAdd()
+          }
+
+          Text {
+            textFormat: Text.PlainText
+            text: "Schedule"
+            color: root.dim(0.6)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+          }
+
+          TextField {
+            id: cronField
+            width: parent.width
+            text: root.addSchedule
+            onTextChanged: if (text !== root.addSchedule) root.addSchedule = text
+            enabled: !root.adding
+            placeholderText: View.DEFAULT_SCHEDULE
+            foreground: root.barForeground
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.bodySmall
+            horizontalPadding: Style.spacing.controlGap
+            verticalPadding: Style.spacing.controlPaddingY
+            onAccepted: root.submitAdd()
+            Keys.onEscapePressed: root.backFromAdd()
+          }
+
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            text: View.scheduleHint(root.addSchedule, root.addZone)
+            wrapMode: Text.Wrap
+            color: root.dim(0.55)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+
+          Text {
+            textFormat: Text.PlainText
+            text: "Time zone, if not the config's"
+            color: root.dim(0.6)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+          }
+
+          TextField {
+            id: zoneField
+            width: parent.width
+            text: root.addZone
+            onTextChanged: if (text !== root.addZone) root.addZone = text
+            enabled: !root.adding
+            placeholderText: "Europe/Oslo, UTC, or local for the main machine's"
+            foreground: root.barForeground
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.bodySmall
+            horizontalPadding: Style.spacing.controlGap
+            verticalPadding: Style.spacing.controlPaddingY
+            onAccepted: root.submitAdd()
+            Keys.onEscapePressed: root.backFromAdd()
+          }
+
+          Item { width: 1; height: Style.space(2) }
+
+          // cronward cannot see the trigger, so the form says what it needs.
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            text: "The workflow needs workflow_dispatch: under on: on its default branch. cronward "
+              + "cannot see that before the first slot; without it, the job didn't run and says why. "
+              + "Not sure? Set up with agent adds it."
+            wrapMode: Text.Wrap
+            color: root.dim(0.45)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+
+          // What is wrong with the form, else why cronward did not add it.
+          Text {
+            readonly property string said: root.addProblem !== "" ? root.addProblem
+              : root.addOutcome ? root.addOutcome.message : ""
+            visible: said !== ""
+            width: parent.width
+            textFormat: Text.PlainText
+            text: said
+            wrapMode: Text.Wrap
+            color: root.addProblem === "" && root.addOutcome
+              && (root.addOutcome.kind === "missing" || root.addOutcome.kind === "unreachable")
+              ? Color.urgent : root.warnColor
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+        }
+
         PanelSeparator { id: footerRule; foreground: root.barForeground }
 
         // ---------- Footer ----------
@@ -1056,6 +1353,7 @@ Panel {
           }
 
           Button {
+            visible: root.page !== "add"
             iconText: "󰖟"
             text: "Token"
             tooltipText: "Give a token access to a repo, on GitHub's token page"
@@ -1065,7 +1363,7 @@ Panel {
             onClicked: root.openTokenPage()
           }
 
-          Item { Layout.fillWidth: true }
+          Item { visible: root.page !== "add"; Layout.fillWidth: true }
 
           Button {
             visible: root.page === "status"
@@ -1079,6 +1377,7 @@ Panel {
           }
 
           Button {
+            visible: root.page !== "add"
             iconText: "󰚩"
             text: root.page === "status" ? "Set up" : "Set up with agent"
             tooltipText: "Your default coding agent puts a workflow on cronward with you"
@@ -1087,6 +1386,47 @@ Panel {
             fontSize: Style.font.bodySmall
             bordered: !!root.view && root.view.kind === "nojobs"
             onClicked: root.setUp()
+          }
+
+          // The form: the agent for this workflow instead, back, or add.
+          Button {
+            visible: root.page === "add"
+            iconText: "󰚩"
+            text: "Set up with agent"
+            tooltipText: "Your agent adds workflow_dispatch: if it is missing, and sets the schedule with you"
+            foreground: root.barForeground
+            fontFamily: root.bar.fontFamily
+            fontSize: Style.font.bodySmall
+            enabled: !root.adding
+            onClicked: root.setUpWorkflow(root.addTarget)
+          }
+
+          Item { visible: root.page === "add"; Layout.fillWidth: true }
+
+          Button {
+            visible: root.page === "add"
+            text: "Cancel"
+            tooltipText: "Back to the workflows (Esc)"
+            foreground: root.barForeground
+            fontFamily: root.bar.fontFamily
+            fontSize: Style.font.bodySmall
+            enabled: !root.adding
+            onClicked: root.backFromAdd()
+          }
+
+          Button {
+            visible: root.page === "add"
+            iconText: "󰐕"
+            text: root.adding ? "Adding…" : "Add job"
+            tooltipText: "cronward checks the job with GitHub, then adds it to the config"
+              + (root.host ? " on " + root.host : "")
+            foreground: root.barForeground
+            fontFamily: root.bar.fontFamily
+            fontSize: Style.font.bodySmall
+            bordered: true
+            enabled: !root.adding && root.addProblem === ""
+            opacity: enabled ? 1 : 0.45
+            onClicked: root.submitAdd()
           }
         }
       }
