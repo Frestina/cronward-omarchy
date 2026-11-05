@@ -2,7 +2,7 @@
   "status": "passed",
   "input_commit": "850f1895f8934e8f45982dd464acdec370f367f6",
   "date": "2026-11-05",
-  "platform": "Arch Linux, Omarchy 4.5.0-3, Hyprland 0.56.2, Quickshell 0.3.2 (r7), one 2560x1600 monitor at scale 2, horizontal bar. cronward from its main branch of 2026-11-04 (reports 0.1.0) on the viewer and the main machine.",
+  "platform": "Arch Linux, Omarchy 4.5.0-3, Hyprland 0.56.2, Quickshell 0.3.2 (r7), one 2560x1600 monitor at scale 2, horizontal bar. cronward from its main branch of 2026-11-04 (reports 0.1.0) on the viewer and the main machine. Also a desktop with Omarchy 4.0.6-1, Quickshell 0.3.2 (r7), three 1920x1200 monitors at scale 1, horizontal bar, as a viewer of the same main machine.",
   "omarchy_version": "4.5.0-3",
   "commands": [
     "./tests/run",
@@ -11,6 +11,7 @@
     "omarchy restart shell, after each change to Cronward.qml",
     "Set up with agent, Ask agent, Config, Token, a row's link and Check now, clicked by hand in the installed widget",
     "A theme switch, and the bar moved to vertical, by hand",
+    "On the desktop: the widget linked and enabled with host set to the main machine, and demo/run \"-1920,0 5760x480\" mixed running",
     "demo/run \"600,0 680x440\" token-expiring no-token"
   ],
   "results": [
@@ -23,12 +24,13 @@
     "The account key button shows beside a missing or expiring token (demo/run, fictional data). Not clicked: it would run token set on the fictional host.",
     "A theme switch: the widget followed the new theme.",
     "A vertical bar: the icon shows without the count, as designed (no room; the tooltip says it), in the same colour as on a horizontal bar. The user's other bar plugins do the same.",
+    "Three monitors (Omarchy 4.0.6): the widget shows on each monitor's bar, and the popup opens below the button on the monitor it was opened from.",
+    "Omarchy 4.0.6, without labelText: the count and the running mark are drawn in text beside a full-size glyph, on all three monitors, as the shell's other counts are.",
     "On 2026-11-04, on Omarchy 4.0.6: Check now over IPC ran cronward watch and moved 'as of' forward, and every fixture state, plus not set up and error, rendered distinct (demo/run)."
   ],
   "limitations": [
-    "Not yet tried: several monitors, and the running mark in the bar on Omarchy 4.5.0.",
+    "Not yet tried: the running mark in the bar on Omarchy 4.5.0 (seen on 4.0.6).",
     "The account key button was seen, not clicked, against a real missing or expiring token.",
-    "The pre-4.5.0 path of the bar count (text, without labelText) was not run again after the fix; it is the same code as before the fix.",
     "Not yet tried on the main machine itself (host blank) with a real cronward."
   ]
 }
