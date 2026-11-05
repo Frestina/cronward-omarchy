@@ -49,6 +49,9 @@ Panel {
   property bool picking: false
   property bool wfStarted: false
   property int wfExitCode: 0
+  // Asked to list again while a list was running: that one may predate a
+  // change (a removed account), so list once more when it ends.
+  property bool wfAgain: false
   // Which picker sections are toggled: repos start collapsed, accounts open.
   // Kept by name, so listing again keeps them as they were.
   property var openRepos: ({})
@@ -188,7 +191,10 @@ Panel {
   }
 
   function fetchWorkflows() {
-    if (wfProc.running) return
+    if (wfProc.running) {
+      wfAgain = true
+      return
+    }
     picking = true
     wfStarted = false
     wfExitCode = 0
@@ -200,6 +206,10 @@ Panel {
     picking = false
     root.pickerView = View.picker({ started: wfStarted, exitCode: wfExitCode,
                                     stdout: wfOut.text, stderr: wfErr.text }, root.host)
+    if (wfAgain) {
+      wfAgain = false
+      Qt.callLater(root.fetchWorkflows)
+    }
   }
 
   function setUpWorkflow(w) {
@@ -284,8 +294,9 @@ Panel {
     keyCatcher.forceActiveFocus()
     var args = View.confirmed(act, yes)
     if (!args || actProc.running) return
-    acting = true
+    // The action first: bindings that read it wake on acting.
     currentAction = act
+    acting = true
     actStarted = false
     actExitCode = 0
     statusNote = ""
@@ -838,6 +849,24 @@ Panel {
           id: pickerRule
           visible: root.page === "workflows" || root.page === "add"
           foreground: root.barForeground
+          strength: root.picking && root.page === "workflows" ? 0.2 : 0.12
+
+          // While the list is asked for: a bar sweeping along the rule.
+          Rectangle {
+            id: busyBar
+            visible: root.picking && root.page === "workflows"
+            y: -1
+            width: parent.width * 0.3
+            height: 3
+            radius: 1.5
+            color: Color.accent
+
+            SequentialAnimation on x {
+              running: busyBar.visible && !Style.reduceMotion
+              loops: Animation.Infinite
+              NumberAnimation { from: -busyBar.width; to: pickerRule.width; duration: 1100; easing.type: Easing.InOutQuad }
+            }
+          }
         }
 
         Flickable {
@@ -854,6 +883,12 @@ Panel {
             id: pickerList
             width: flick.width
             spacing: Style.space(10)
+            // The old list, while a new one is asked for: faded, and not to be
+            // acted on, as it may be out of date.
+            readonly property bool stale: root.picking && !!root.pickerView
+            opacity: stale ? 0.4 : 1
+            enabled: !stale
+            Behavior on opacity { NumberAnimation { duration: typeof Style.duration === "function" ? Style.duration(150) : 150 } }
 
             // After Remove account: cronward's lines, and the token page, where
             // the token itself is deleted.

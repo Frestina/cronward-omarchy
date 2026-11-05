@@ -94,7 +94,11 @@ own. Every change is a cronward command.
 - The popup has three pages: the jobs (`status`), the workflow picker
   (`workflows`) and the add form (`add`). The picker runs `workflows --json` in a third `Process`
   when it opens or on <kbd>r</kbd>, never on the timer, since it asks
-  GitHub for every repo. Its list scrolls in a `Flickable` capped to the
+  GitHub for every repo. While it runs, a bar sweeps along the rule under
+  the header, and the last list stays faded and disabled, as it may be out
+  of date. A list asked for while one runs (after Remove account, say) runs
+  once more when it ends (`wfAgain`), since the running one may predate the
+  change. Its list scrolls in a `Flickable` capped to the
   screen's room, as the shell's own panels do. <kbd>Esc</kbd> goes back to
   the jobs; closing the popup always returns to them. Repos start folded
   and accounts open; which are toggled is kept by name (`openRepos`,

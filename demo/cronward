@@ -14,11 +14,15 @@
 # "run-refused" the start does not go through, and in "action-unreachable"
 # both fail as ssh would. `token remove` prints action/account-removed.txt,
 # or in the state "account-old" account-old.txt, as a cronward from before
-# it took the account out of the config. Fictional names only.
+# it took the account out of the config; a removed account is then left out
+# of `workflows --json` until the demo state changes. Fictional names only.
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 state=$(head -n1 "${XDG_RUNTIME_DIR:-/tmp}/cronward-demo" 2>/dev/null || true)
 state=${state:-mixed}
+removed=${XDG_RUNTIME_DIR:-/tmp}/cronward-demo-removed
+# A new state starts with every account back.
+[[ $(head -n1 "$removed" 2>/dev/null) == "$state" ]] || rm -f "$removed"
 # On a viewer the widget runs `cronward --on HOST ...`: the same here.
 if [[ ${1:-} == --on ]]; then shift 2; fi
 case ${1:-} in
@@ -30,7 +34,17 @@ case ${1:-} in
       workflows-readonly) echo "cronward: this key only reads the status" >&2; exit 1 ;;
     esac
     name=list; [[ $state == workflows-* ]] && name=${state#workflows-}
-    sleep 1; cat "$here/fixtures/workflows/$name.json"
+    sleep 1
+    python3 -I - "$here/fixtures/workflows/$name.json" "$removed" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+try:
+    gone = open(sys.argv[2]).read().split("\n")[1:]
+except OSError:
+    gone = []
+data["accounts"] = [a for a in data["accounts"] if a["account"] not in gone]
+json.dump(data, sys.stdout, indent=1)
+PY
     # cronward exits 2 when an account's repos could not be listed.
     [[ $name == account-error ]] && exit 2; exit 0 ;;
   add)
@@ -54,7 +68,11 @@ case ${1:-} in
     if [[ ${2:-} == remove ]]; then
       sleep 1
       if [[ $state == account-old ]]; then cat "$here/fixtures/action/account-old.txt"
-      else cat "$here/fixtures/action/account-removed.txt"; fi
+      else
+        cat "$here/fixtures/action/account-removed.txt"
+        [[ -f $removed ]] || echo "$state" >"$removed"
+        echo "${3:-}" >>"$removed"
+      fi
       exit 0
     fi
     echo "demo: cronward $*: nothing done, this is the demo"; exit 0 ;;

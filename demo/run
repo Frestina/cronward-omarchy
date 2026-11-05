@@ -17,6 +17,7 @@
 #   action-unreachable with Tab and Enter (yes). account-confirm asks to
 #   remove the account "work" on the picker; account-removed and account-old
 #   answer yes, as a current cronward and one from before 2026-11-05.
+#   workflows-loading catches the picker while it lists again.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 region=${1:?usage: demo/run "<x>,<y> <w>x<h>" [STATE...]}
@@ -36,7 +37,7 @@ cp -p "$config" "$runtime/cronward-demo.shell.json"
 cleanup() {
   qs ipc --pid "$pid" call "$id" close >/dev/null 2>&1 || true
   cp -p "$runtime/cronward-demo.shell.json" "$config" && rm -f "$runtime/cronward-demo.shell.json"
-  rm -f "$runtime/cronward-demo"
+  rm -f "$runtime/cronward-demo" "$runtime/cronward-demo-removed"
 }
 trap cleanup EXIT INT TERM HUP
 
@@ -61,7 +62,14 @@ for state in "${states[@]}"; do
   echo "$state" >"$runtime/cronward-demo"
   qs ipc --pid "$pid" call "$id" refresh
   sleep 1
-  if [[ $state == workflows-* ]]; then
+  if [[ $state == workflows-loading ]]; then
+    # Listed once, then asked again: caught while the second list runs.
+    echo workflows-list >"$runtime/cronward-demo"
+    qs ipc --pid "$pid" call "$id" workflows
+    sleep 2
+    qs ipc --pid "$pid" call "$id" workflows
+    sleep 0.5
+  elif [[ $state == workflows-* ]]; then
     qs ipc --pid "$pid" call "$id" workflows
     sleep 1.5
   elif [[ $state == add-* ]]; then
@@ -95,7 +103,7 @@ for state in "${states[@]}"; do
   else
     qs ipc --pid "$pid" call "$id" open
   fi
-  sleep 1
+  [[ $state == workflows-loading ]] || sleep 1
   out=demo/out/$state.png
   [[ $state == mixed && $# -eq 0 ]] && out=preview.png
   grim -g "$region" "$out"

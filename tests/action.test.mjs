@@ -164,3 +164,12 @@ test("Remove account with --on failing, or refused", () => {
     /cannot remove accounts/)
   assert.equal(result(removeWork, 2, "", "").message, "`cronward token remove work` exited 2")
 })
+
+test("a list asked for while one runs is run again after it, so a removed account goes", () => {
+  const fetch = QML.slice(QML.indexOf("function fetchWorkflows()"), QML.indexOf("function finishWorkflows()"))
+  assert.match(fetch, /if \(wfProc\.running\) \{\s*wfAgain = true\s*return/)
+  const finish = QML.slice(QML.indexOf("function finishWorkflows()"), QML.indexOf("function setUpWorkflow("))
+  assert.match(finish, /if \(wfAgain\) \{\s*wfAgain = false\s*Qt\.callLater\(root\.fetchWorkflows\)/)
+  const done = QML.slice(QML.indexOf("function finishAction()"), QML.indexOf("function addAccount()"))
+  assert.match(done, /if \(currentAction\.kind === "account"\) root\.fetchWorkflows\(\)/)
+})
