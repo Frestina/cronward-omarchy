@@ -374,6 +374,57 @@ function addResult(run, host) {
   return { kind: "refused", message: said(err) || "`cronward add` exited " + run.exitCode }
 }
 
+// --- Run now and Remove job, each asked first --------------------------------
+// A run is a real run of the workflow, and a removal changes cronward's
+// config, so neither runs on one click: action() makes the question, and
+// only a yes to it (confirmed()) gives the command.
+
+function action(kind, row, host) {
+  var where = row.repo + " " + row.workflow
+  if (kind === "run")
+    return { kind: "run", job: row.name, confirmText: "Run",
+             question: "Start a real run of " + row.workflow + " in " + row.repo + " now, as the job "
+               + row.name + "? GitHub runs it as it would at a slot.",
+             args: onMain(host, ["run", row.name]) }
+  if (kind === "remove")
+    return { kind: "remove", job: row.name, confirmText: "Remove",
+             question: "Take " + row.name + " (" + where + ") off cronward? Only cronward's config "
+               + "changes: the workflow and its file stay as they are, and nothing starts it on a "
+               + "schedule after this.",
+             args: onMain(host, ["remove", row.name]) }
+  return null
+}
+
+// The command for an answer: the action's on a yes, nothing on a no.
+function confirmed(act, yes) {
+  return act && yes === true ? act.args : null
+}
+
+// run: {started, exitCode, stdout, stderr} of `cronward [--on HOST] run JOB`
+// or `remove JOB`. `run` exits 0 once the run started (not passed: the tick
+// follows it to its end), 1 when the start did not go through, saying why on
+// stdout; `remove` exits 0 when the job is out of the config.
+function actionResult(act, run, host) {
+  if (!run.started || run.exitCode === 127)
+    return { kind: "missing", level: "bad", message: "cronward is not installed here: no "
+      + "`cronward` on the shell's PATH and no ~/.local/bin/cronward." }
+  var out = said(run.stdout)
+  if (run.exitCode === 0) {
+    if (act.kind === "run")
+      return { kind: "done", level: "ok", message: out.split("\n").filter(function(l) {
+        return !/^the next tick follows it/.test(l) }).concat(["Started, not passed yet: the row "
+        + "shows the result when the run ends."]).join("\n") }
+    return { kind: "done", level: "ok", message: out }
+  }
+  var err = String(run.stderr || "")
+  var failed = onMainFailed(err, host, act.kind === "run" ? "start runs" : "remove jobs",
+    (act.kind === "run" ? "start runs" : "remove jobs") + (host ? " through `--on`" : "") + ": update it")
+  if (failed) { failed.level = failed.kind === "unreachable" ? "bad" : "warn"; return failed }
+  var why = [out, said(err)].filter(function(t) { return t !== "" }).join("\n")
+  return { kind: "refused", level: "warn",
+           message: why || "`cronward " + act.kind + " " + act.job + "` exited " + run.exitCode }
+}
+
 function explainPrompt(row, host, pluginDir) {
   var job = { job: row.name, repo: row.repo, workflow: row.workflow, result: row.word,
               reason: row.reason, run: row.url }
@@ -526,5 +577,6 @@ if (typeof module !== "undefined") {
     addAccountLine: addAccountLine, picker: picker, DEFAULT_SCHEDULE: DEFAULT_SCHEDULE,
     jobNames: jobNames, jobName: jobName, describeSchedule: describeSchedule,
     scheduleHint: scheduleHint, addProblem: addProblem, addArgs: addArgs, addResult: addResult,
+    action: action, confirmed: confirmed, actionResult: actionResult,
     explainPrompt: explainPrompt, classify: classify, model: model }
 }

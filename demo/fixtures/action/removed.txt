@@ -1,0 +1,2 @@
+removed nightly from /home/me/.config/cronward/config.toml
+If GitHub should run the workflow on its own again, put its `schedule:` back.

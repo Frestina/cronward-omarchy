@@ -1,0 +1,2 @@
+started nightly: https://github.com/me/widget/actions/runs/9100000001
+the next tick follows it to its end; see `cronward status`

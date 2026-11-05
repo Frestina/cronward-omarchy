@@ -56,6 +56,13 @@ own. Every change is a cronward command.
   (`onMainFailed()`), anything else refused, with cronward's own message.
   cronward cannot see a workflow's triggers, so the form is offered for
   every workflow and says `workflow_dispatch:` is needed.
+- Run now and Remove job: `action(kind, row, host)` gives the question
+  (naming the job, repo and workflow, and what it does), the confirm
+  button's word and the command, `run JOB` or `remove JOB` through
+  `onMain()`. `confirmed(action, yes)` gives the command only for a yes.
+  `run` goes without `--wait`: exit 0 means started, not passed, and
+  `actionResult()` says so; exit 1 is a start that did not go through, with
+  cronward's reason from stdout; the `--on` failures as elsewhere.
 - `setupWorkflowPrompt()` is `setupPrompt()` plus the picked repo and
   workflow file, as data. `addAccountLine()` reads the new account's name in
   the terminal and runs `token set` with it, on the main machine.
@@ -95,6 +102,12 @@ own. Every change is a cronward command.
   with cronward's lines over them until the popup closes, and Check now, so
   a viewer fetches the status with the new job. Otherwise the form stays,
   with the reason.
+- Run now and Remove on a row set `pendingAction`, which opens the shell's
+  `ConfirmDialog` over the popup, with Cancel selected and the key catcher
+  `blocked`, so the dialog has the keys. Only its `onConfirmed` calls
+  `answer(true)`, the one place the fifth `Process` runs (a test checks
+  this). After the command, cronward's lines show over the jobs until the
+  popup closes, and Check now reads the status again.
 - `BarIconButton`: `active` unless quiet, `activeColor` urgent for `bad`
   and the theme's orange for `warn`, `dimmed` when every job passed and
   nothing is running. Vertical bars show only the icon.
@@ -106,7 +119,8 @@ own. Every change is a cronward command.
 - All text is rendered with `Text.PlainText`; a test checks every `Text`.
 - IPC target `io.github.frestina.cronward`: `open`, `close`, `toggle`,
   `refresh`, `check`, `workflows` (opens the picker), `add ACCOUNT REPO
-  FILE` (opens the add form).
+  FILE` (opens the add form), `askRun JOB` and `askRemove JOB` (open the
+  question, as the row's buttons do; nothing runs without its yes).
 
 ## `demo/`
 
@@ -118,11 +132,14 @@ own. Every change is a cronward command.
   repos.
 - `fixtures/add/`: what `cronward add` prints when it added a job, and its
   stderr when GitHub's check refused one.
+- `fixtures/action/`: what `cronward run` prints when it started a run and
+  when the start did not go through, and what `cronward remove` prints.
 - `cronward`: a fake that prints the fixture named in
   `$XDG_RUNTIME_DIR/cronward-demo` with its times moved to now, or the
   stderr of the not-set-up and error states. It takes `--on HOST` as
   cronward does, answers `workflows --json` from
-  `fixtures/workflows/`, and `add` from `fixtures/add/`.
+  `fixtures/workflows/`, `add` from `fixtures/add/`, and `run` and
+  `remove` from `fixtures/action/`.
 - `run`: points the widget at the fake in `shell.json`, captures each state
   with `grim` (the add states open the form over IPC and press Enter with
   `wtype`), and puts `shell.json` back byte for byte on exit.

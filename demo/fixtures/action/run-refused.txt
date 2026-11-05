@@ -1,0 +1,1 @@
+nightly didn't run: Workflow does not have 'workflow_dispatch' trigger: add `workflow_dispatch:` under `on:` in check.yml

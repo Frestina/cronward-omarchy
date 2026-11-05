@@ -11,7 +11,10 @@
 # Usage: demo/run "<x>,<y> <w>x<h>" [STATE...]   (grim region, logical pixels)
 #   default state: mixed, written to preview.png; others to demo/out/STATE.png
 #   add-form shows the add form; add-added, add-refused and add-unreachable
-#   press Enter in it (with wtype) and show what came of it.
+#   press Enter in it (with wtype) and show what came of it. run-confirm and
+#   remove-confirm show the question for the job "nightly"; run-cancelled
+#   answers it with Esc, and run-started, run-refused, remove-done and
+#   action-unreachable with Tab and Enter (yes).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 region=${1:?usage: demo/run "<x>,<y> <w>x<h>" [STATE...]}
@@ -68,6 +71,18 @@ for state in "${states[@]}"; do
       wtype -k Return
       sleep 2.5
     fi
+  elif [[ $state =~ ^(run|remove|action)- ]]; then
+    command -v wtype >/dev/null || { echo "demo: $state needs wtype" >&2; exit 1; }
+    qs ipc --pid "$pid" call "$id" open
+    sleep 1.5
+    ask=askRun; [[ $state == remove-* ]] && ask=askRemove
+    qs ipc --pid "$pid" call "$id" "$ask" nightly
+    sleep 0.8
+    case $state in
+      *-confirm) ;;
+      run-cancelled) wtype -k Escape; sleep 1 ;;
+      *) wtype -k Tab -k Return; sleep 3 ;;
+    esac
   else
     qs ipc --pid "$pid" call "$id" open
   fi

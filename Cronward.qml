@@ -65,8 +65,18 @@ Panel {
   property int addExitCode: 0
   // What View.addResult() made of cronward's answer, when it was not "added".
   property var addOutcome: null
-  // cronward's lines after an add, shown over the jobs until the popup closes.
+  // cronward's lines after an add, a run or a removal, shown over the jobs
+  // until the popup closes; statusNoteLevel is "ok", "warn" or "bad".
   property string statusNote: ""
+  property string statusNoteLevel: "ok"
+
+  // Run now and Remove job: View.action() while the question is open, null
+  // otherwise. Nothing runs but on its yes, the dialog's onConfirmed.
+  property var pendingAction: null
+  property var currentAction: null
+  property bool acting: false
+  property bool actStarted: false
+  property int actExitCode: 0
   readonly property var addForm: addTarget ? { account: addTarget.account, repo: addTarget.repo,
     file: addTarget.file, name: addName, schedule: addSchedule, timezone: addZone } : null
   readonly property string addProblem: addForm ? View.addProblem(addForm, View.jobNames(view, pickerView)) : ""
@@ -234,9 +244,52 @@ Panel {
       return
     }
     statusNote = r.message
+    statusNoteLevel = "ok"
     addTarget = null
     page = "status"
     keyCatcher.forceActiveFocus()
+    root.checkNow()
+  }
+
+  // Run now or Remove job on a row: asks first, and nothing runs until the yes.
+  function ask(kind, row) {
+    if (acting || !row) return
+    if (!root.opened) root.open()
+    pendingAction = View.action(kind, row, root.host)
+    confirm.selectedIndex = 0
+    Qt.callLater(function() { confirm.forceActiveFocus() })
+  }
+
+  function askByName(kind, name) {
+    var rows = root.view ? root.view.rows : []
+    for (var i = 0; i < rows.length; i++)
+      if (rows[i].name === name) return ask(kind, rows[i])
+  }
+
+  // The dialog's answer. Only a yes gives a command (View.confirmed).
+  function answer(yes) {
+    var act = pendingAction
+    pendingAction = null
+    keyCatcher.forceActiveFocus()
+    var args = View.confirmed(act, yes)
+    if (!args || actProc.running) return
+    acting = true
+    currentAction = act
+    actStarted = false
+    actExitCode = 0
+    statusNote = ""
+    actProc.command = View.processArgv(root.cronward, args)
+    actProc.running = true
+  }
+
+  // Either way the status is read again: a started run shows as running, a
+  // start that did not go through as didn't run, a removed job is gone.
+  function finishAction() {
+    acting = false
+    var r = View.actionResult(currentAction, { started: actStarted, exitCode: actExitCode,
+                                               stdout: actOut.text, stderr: actErr.text }, root.host)
+    statusNote = r.message
+    statusNoteLevel = r.level
     root.checkNow()
   }
 
@@ -271,7 +324,8 @@ Panel {
   onOpenedChanged: {
     if (opened) return refresh()
     page = "status"
-    if (!adding) statusNote = ""
+    pendingAction = null
+    if (!adding && !acting) statusNote = ""
   }
   onHostChanged: { pickerView = null; refresh() }
   onCronwardChanged: refresh()
@@ -291,6 +345,9 @@ Panel {
     function add(account: string, repo: string, file: string): void {
       root.startAdd({ repo: repo, file: file, name: "", jobs: [] }, account)
     }
+    // Ask to run or remove a job, as its row's buttons do; nothing runs without the yes.
+    function askRun(job: string): void { root.askByName("run", job) }
+    function askRemove(job: string): void { root.askByName("remove", job) }
   }
 
   // Both streams finish and exited fires before running drops, so finish()
@@ -332,6 +389,16 @@ Panel {
     onRunningChanged: if (!running) root.finishAdd()
     stdout: StdioCollector { id: addOut; waitForEnd: true }
     stderr: StdioCollector { id: addErr; waitForEnd: true }
+  }
+
+  // `cronward [--on HOST] run JOB` or `remove JOB`, after a yes.
+  Process {
+    id: actProc
+    onStarted: root.actStarted = true
+    onExited: function(exitCode) { root.actExitCode = exitCode }
+    onRunningChanged: if (!running) root.finishAction()
+    stdout: StdioCollector { id: actOut; waitForEnd: true }
+    stderr: StdioCollector { id: actErr; waitForEnd: true }
   }
 
   FileView {
@@ -399,13 +466,17 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(420))
-    contentHeight: panel.fittedContentHeight(content.implicitHeight)
+    // Room for the question when the jobs are few.
+    contentHeight: panel.fittedContentHeight(Math.max(content.implicitHeight,
+      root.pendingAction ? Style.space(240) : 0))
 
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
       // A form field owns its keys (j, k, x, space…); Esc and Enter there are its own.
+      // So does the question to run or remove a job.
       blocked: nameField.activeFocus || cronField.activeFocus || zoneField.activeFocus
+        || root.pendingAction !== null
       // Esc on the form goes back to the picker, on the picker to the status;
       // on the status it closes.
       onCloseRequested: {
@@ -519,14 +590,16 @@ Panel {
           width: parent.width
           spacing: content.spacing
 
-          // ---------- Just added from the form: cronward's own lines ----------
+          // ---------- Just added, started or removed: cronward's own lines ----------
           Text {
-            visible: root.statusNote !== ""
+            visible: root.statusNote !== "" || root.acting
             width: parent.width
             textFormat: Text.PlainText
-            text: root.statusNote
+            text: root.acting ? (root.currentAction.kind === "run" ? "Starting " : "Removing ")
+              + root.currentAction.job + "…" : root.statusNote
             wrapMode: Text.Wrap
-            color: root.okColor
+            color: root.acting ? root.dim(0.7) : root.statusNoteLevel === "ok" ? root.okColor
+              : root.statusNoteLevel === "bad" ? Color.urgent : root.warnColor
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.caption
           }
@@ -670,6 +743,30 @@ Panel {
                     foreground: root.barForeground
                     fontFamily: root.bar.fontFamily
                     onClicked: root.explain(jobRow.modelData)
+                  }
+
+                  // A real run of the workflow: asks first.
+                  PanelActionButton {
+                    iconText: "󰐊"
+                    tooltipText: "Run " + jobRow.modelData.name + " now (asks first)"
+                    size: Style.space(18)
+                    fontSize: Style.font.caption
+                    foreground: root.dim(0.75)
+                    fontFamily: root.bar.fontFamily
+                    enabled: !root.acting
+                    onClicked: root.ask("run", jobRow.modelData)
+                  }
+
+                  // Out of cronward's config; the workflow stays. Asks first.
+                  PanelActionButton {
+                    iconText: "󰆴"
+                    tooltipText: "Remove " + jobRow.modelData.name + " from cronward (asks first)"
+                    size: Style.space(18)
+                    fontSize: Style.font.caption
+                    foreground: root.dim(0.75)
+                    fontFamily: root.bar.fontFamily
+                    enabled: !root.acting
+                    onClicked: root.ask("remove", jobRow.modelData)
                   }
                 }
 
@@ -1429,6 +1526,23 @@ Panel {
             onClicked: root.submitAdd()
           }
         }
+      }
+
+      // ---------- Run now / Remove job: the question, over the popup ----------
+      // Starts on Cancel, so Enter alone never runs or removes anything.
+      ConfirmDialog {
+        id: confirm
+        anchors.fill: parent
+        z: 10
+        opened: root.pendingAction !== null
+        message: root.pendingAction ? root.pendingAction.question : ""
+        cancelText: "Cancel"
+        confirmText: root.pendingAction ? root.pendingAction.confirmText : "Confirm"
+        foreground: root.barForeground
+        fontFamily: root.bar.fontFamily
+        onCanceled: root.answer(false)
+        onConfirmed: root.answer(true)
+        Keys.onPressed: function(event) { if (confirm.handleKey(event)) event.accepted = true }
       }
     }
   }

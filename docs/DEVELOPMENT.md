@@ -25,12 +25,16 @@ states are the fixture names plus `not-set-up` and `error`, and for the
 workflow picker `workflows-NAME` for each `fixtures/workflows/NAME.json`,
 plus `workflows-unreachable` and `workflows-readonly`. For the add form,
 `add-form` shows it, and `add-added`, `add-refused` and `add-unreachable`
-press Enter in it with `wtype` and show what came of it. With no state it
+press Enter in it with `wtype` and show what came of it. For Run now and
+Remove, `run-confirm` and `remove-confirm` show the question, `run-cancelled`
+answers it with Esc, and `run-started`, `run-refused`, `remove-done` and
+`action-unreachable` answer yes. With no state it
 writes `preview.png` from `mixed`; check that it shows only fictional names
 before committing it.
 
 Over IPC: `qs ipc call io.github.frestina.cronward open|close|toggle|refresh|check|workflows`,
-and `add ACCOUNT OWNER/REPO FILE` for the add form.
+`add ACCOUNT OWNER/REPO FILE` for the add form, and `askRun JOB` or
+`askRemove JOB` for the question on a row.
 
 ## By hand, before a release
 
@@ -42,6 +46,8 @@ and `add ACCOUNT OWNER/REPO FILE` for the add form.
   viewer, through `cronward --on`.
 - Add job from the picker: the job shows in the bar after the add, and a
   refused add says why.
+- Run now and Remove ask first; Cancel and Esc do nothing; a yes to Run now
+  shows the row running, a yes to Remove takes the row away.
 
 Remove with `omarchy plugin remove io.github.frestina.cronward`, or delete the
 link. The widget keeps no files.

@@ -40,6 +40,22 @@ with the job and [a guide to explaining it](docs/AGENT_EXPLAIN.md): it reads
 the run's log or the reason cronward gave, says what happened and what you
 could do, and changes nothing without asking.
 
+## Run now and Remove
+
+Each job's row has two more buttons, and each asks first, with Cancel
+chosen, so a click or Enter alone never does anything:
+
+- **Run now** (the play button) starts a real run of the workflow with
+  `cronward run`, as at a slot. It reports that the run started, not that
+  it passed: the row shows it running, and its result when the run ends.
+  When the start does not go through, cronward's reason shows.
+- **Remove** (the bin) takes the job out of cronward's config with
+  `cronward remove`. The workflow and its file stay as they are; if GitHub
+  should run it on its own again, put its `schedule:` back.
+
+After either, the popup reads the status again (on a laptop, it fetches it
+first).
+
 **Workflows**, at the bottom of the popup, lists the repos and workflows
 each account's token reaches, from `cronward workflows --json` on the main
 machine. Under each account, each repo is a card named without the
@@ -86,7 +102,8 @@ ask before a test run or a push.
   - On the machine that runs cronward: nothing else.
   - On a laptop: cronward installed as a viewer of the main machine
     (`cronward install --viewer homeserver`). For the buttons that change
-    something there (Config, storing a token, Add job, Set up with agent), an ssh
+    something there (Config, storing a token, Add job, Run now, Remove,
+    Set up with agent), an ssh
     login to it that can run commands, as `cronward --on` needs.
 
 ## Install
@@ -120,6 +137,8 @@ machine through `cronward --on <host>`.
 - **The key** next to a missing or expiring token: a terminal running
   `cronward token set <account>`. You type the token there; the widget never
   sees it.
+- **Run now** and **Remove** on a job's row (`cronward run`, `cronward
+  remove`), each asked first.
 - **Check now** and **the terminal**: as middle and right click.
 
 ## What it shows
