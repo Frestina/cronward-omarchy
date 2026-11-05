@@ -69,6 +69,8 @@ Panel {
   // until the popup closes; statusNoteLevel is "ok", "warn" or "bad".
   property string statusNote: ""
   property string statusNoteLevel: "ok"
+  // The page the note belongs to: "status", or "workflows" after Remove account.
+  property string notePage: "status"
 
   // Run now and Remove job: View.action() while the question is open, null
   // otherwise. Nothing runs but on its yes, the dialog's onConfirmed.
@@ -245,6 +247,7 @@ Panel {
     }
     statusNote = r.message
     statusNoteLevel = "ok"
+    notePage = "status"
     addTarget = null
     page = "status"
     keyCatcher.forceActiveFocus()
@@ -255,9 +258,17 @@ Panel {
   function ask(kind, row) {
     if (acting || !row) return
     if (!root.opened) root.open()
-    pendingAction = View.action(kind, row, root.host)
+    pendingAction = kind === "account" ? View.accountAction(row, root.host)
+      : View.action(kind, row, root.host)
     confirm.selectedIndex = 0
     Qt.callLater(function() { confirm.forceActiveFocus() })
+  }
+
+  function askRemoveAccount(name) {
+    var accounts = root.pickerView ? root.pickerView.accounts : []
+    for (var i = 0; i < accounts.length; i++)
+      if (accounts[i].name === name && View.removeAccount(root.view, name).enabled)
+        return ask("account", accounts[i])
   }
 
   function askByName(kind, name) {
@@ -283,14 +294,17 @@ Panel {
   }
 
   // Either way the status is read again: a started run shows as running, a
-  // start that did not go through as didn't run, a removed job is gone.
+  // start that did not go through as didn't run, a removed job is gone. A
+  // removed account: the workflows are listed again too.
   function finishAction() {
     acting = false
     var r = View.actionResult(currentAction, { started: actStarted, exitCode: actExitCode,
                                                stdout: actOut.text, stderr: actErr.text }, root.host)
     statusNote = r.message
     statusNoteLevel = r.level
+    notePage = currentAction.kind === "account" ? "workflows" : "status"
     root.checkNow()
+    if (currentAction.kind === "account") root.fetchWorkflows()
   }
 
   function addAccount() { run(View.terminal(View.addAccountLine(root.cronward, root.host))) }
@@ -348,6 +362,8 @@ Panel {
     // Ask to run or remove a job, as its row's buttons do; nothing runs without the yes.
     function askRun(job: string): void { root.askByName("run", job) }
     function askRemove(job: string): void { root.askByName("remove", job) }
+    // On the picker, an account no job uses; nothing runs without the yes.
+    function askRemoveAccount(account: string): void { root.askRemoveAccount(account) }
   }
 
   // Both streams finish and exited fires before running drops, so finish()
@@ -592,7 +608,8 @@ Panel {
 
           // ---------- Just added, started or removed: cronward's own lines ----------
           Text {
-            visible: root.statusNote !== "" || root.acting
+            visible: root.acting ? root.currentAction.kind !== "account"
+              : root.statusNote !== "" && root.notePage === "status"
             width: parent.width
             textFormat: Text.PlainText
             text: root.acting ? (root.currentAction.kind === "run" ? "Starting " : "Removing ")
@@ -838,6 +855,38 @@ Panel {
             width: flick.width
             spacing: Style.space(10)
 
+            // After Remove account: cronward's lines, and the token page, where
+            // the token itself is deleted.
+            RowLayout {
+              visible: root.acting ? root.currentAction.kind === "account"
+                : root.statusNote !== "" && root.notePage === "workflows"
+              width: parent.width
+              spacing: Style.space(8)
+
+              Text {
+                Layout.fillWidth: true
+                textFormat: Text.PlainText
+                text: root.acting ? "Removing " + root.currentAction.job + "…" : root.statusNote
+                wrapMode: Text.Wrap
+                color: root.acting ? root.dim(0.7) : root.statusNoteLevel === "ok" ? root.okColor
+                  : root.statusNoteLevel === "bad" ? Color.urgent : root.warnColor
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+              }
+
+              PanelActionButton {
+                visible: !root.acting
+                Layout.alignment: Qt.AlignTop
+                iconText: "󰖟"
+                tooltipText: "Delete the token on GitHub's token page"
+                size: Style.space(18)
+                fontSize: Style.font.caption
+                foreground: root.barForeground
+                fontFamily: root.bar.fontFamily
+                onClicked: root.openTokenPage()
+              }
+            }
+
             // Before the first answer, while asking, or what went wrong.
             Text {
               readonly property string said: !root.pickerView
@@ -862,6 +911,7 @@ Panel {
                 id: account
                 required property var modelData
                 readonly property bool open: !root.closedAccounts[modelData.name]
+                readonly property var removal: View.removeAccount(root.view, modelData.name)
                 width: pickerList.width
                 spacing: Style.space(8)
 
@@ -1219,6 +1269,27 @@ Panel {
                       }
                     }
                   }
+                }
+
+                // Out of the way below the repos, and asks first. Not while a job uses it.
+                RowLayout {
+                  visible: account.open
+                  width: account.width
+
+                  Button {
+                    iconText: "󰆴"
+                    text: "Remove account"
+                    tooltipText: account.removal.tip
+                    foreground: root.dim(0.7)
+                    fontFamily: root.bar.fontFamily
+                    fontSize: Style.font.caption
+                    // Hoverable even when it cannot remove, so its tooltip says why.
+                    enabled: !root.acting
+                    opacity: account.removal.enabled && enabled ? 1 : 0.45
+                    onClicked: if (account.removal.enabled) root.ask("account", account.modelData)
+                  }
+
+                  Item { Layout.fillWidth: true }
                 }
               }
             }

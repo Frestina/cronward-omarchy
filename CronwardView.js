@@ -395,6 +395,34 @@ function action(kind, row, host) {
   return null
 }
 
+// Remove account, on the picker: { name, owner } as pickerAccount() gives it.
+// The token is deleted on the main machine and [accounts.NAME] leaves its
+// config; the token on GitHub is the user's to delete there.
+function accountAction(a, host) {
+  return { kind: "account", job: a.name, confirmText: "Remove",
+           question: "Remove the account " + a.name + " from cronward" + (host ? " on " + host : "")
+             + "? Its token is deleted there, and [accounts." + a.name + "] leaves the config. "
+             + "The token itself stays on GitHub until you delete it on GitHub's token page"
+             + (a.owner ? ", signed in as " + a.owner : "") + ".",
+           args: onMain(host, ["token", "remove", a.name]) }
+}
+
+// Whether an account can be removed: not while a job uses it, and not before
+// the status says which jobs do, since its token would go and they would stop.
+function removeAccount(view, name) {
+  if (!view || (view.kind !== "status" && view.kind !== "nojobs"))
+    return { enabled: false, tip: "The status is not read, so which jobs use " + name
+      + " is not known yet" }
+  var users = view.rows.filter(function(r) { return r.account === name })
+    .map(function(r) { return r.name })
+  if (users.length === 1)
+    return { enabled: false, tip: "Remove the job " + users[0] + " first: it uses " + name }
+  if (users.length > 1)
+    return { enabled: false, tip: "Remove the jobs " + users.join(", ") + " first: they use " + name }
+  return { enabled: true, tip: "Remove " + name + " from cronward: its token and its place in "
+    + "the config (asks first)" }
+}
+
 // The command for an answer: the action's on a yes, nothing on a no.
 function confirmed(act, yes) {
   return act && yes === true ? act.args : null
@@ -414,15 +442,27 @@ function actionResult(act, run, host) {
       return { kind: "done", level: "ok", message: out.split("\n").filter(function(l) {
         return !/^the next tick follows it/.test(l) }).concat(["Started, not passed yet: the row "
         + "shows the result when the run ends."]).join("\n") }
+    if (act.kind === "account") {
+      var gone = "The token still exists on GitHub: delete it on the token page."
+      if (/^note: kept \[accounts\./m.test(out))
+        return { kind: "kept", level: "warn", message: out }
+      // A cronward from before 2026-11-05 deletes the token and leaves the account.
+      if (!/^removed \[accounts\./m.test(out))
+        return { kind: "old", level: "warn", message: out + "\ncronward" + (host ? " on " + host : "")
+          + " is too old to take [accounts." + act.job + "] out of its config: update it, or take "
+          + "it out with Config.\n" + gone }
+      return { kind: "done", level: "ok", message: out + "\n" + gone }
+    }
     return { kind: "done", level: "ok", message: out }
   }
   var err = String(run.stderr || "")
-  var failed = onMainFailed(err, host, act.kind === "run" ? "start runs" : "remove jobs",
-    (act.kind === "run" ? "start runs" : "remove jobs") + (host ? " through `--on`" : "") + ": update it")
+  var doing = act.kind === "run" ? "start runs" : act.kind === "account" ? "remove accounts" : "remove jobs"
+  var failed = onMainFailed(err, host, doing, doing + (host ? " through `--on`" : "") + ": update it")
   if (failed) { failed.level = failed.kind === "unreachable" ? "bad" : "warn"; return failed }
   var why = [out, said(err)].filter(function(t) { return t !== "" }).join("\n")
   return { kind: "refused", level: "warn",
-           message: why || "`cronward " + act.kind + " " + act.job + "` exited " + run.exitCode }
+           message: why || "`cronward " + act.args.slice(act.args.indexOf("--on") === 0 ? 2 : 0).join(" ")
+             + "` exited " + run.exitCode }
 }
 
 function explainPrompt(row, host, pluginDir) {
@@ -468,7 +508,8 @@ function classify(run, host) {
 function jobRow(j, nowMs) {
   var r = j.latest
   var row = {
-    name: j.name, repo: j.repo, workflow: j.workflow, where: j.repo + " " + j.workflow,
+    name: j.name, account: j.account || "", repo: j.repo, workflow: j.workflow,
+    where: j.repo + " " + j.workflow,
     kind: r ? r.kind : "none", word: r ? WORDS[r.kind] || r.kind : "no result yet",
     reason: r && r.reason ? r.reason : "",
     ran: r ? (r.manual ? "started by hand " : "slot ") + when(r.slot, nowMs) : "",
@@ -578,5 +619,6 @@ if (typeof module !== "undefined") {
     jobNames: jobNames, jobName: jobName, describeSchedule: describeSchedule,
     scheduleHint: scheduleHint, addProblem: addProblem, addArgs: addArgs, addResult: addResult,
     action: action, confirmed: confirmed, actionResult: actionResult,
+    accountAction: accountAction, removeAccount: removeAccount,
     explainPrompt: explainPrompt, classify: classify, model: model }
 }

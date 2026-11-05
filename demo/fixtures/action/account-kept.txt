@@ -1,0 +1,2 @@
+removed the token for work
+note: kept [accounts.work] in /home/me/.config/cronward/config.toml, as job api-nightly uses it. Without a token it does not run: store one with `cronward token set work`, or take it out with `cronward remove api-nightly`

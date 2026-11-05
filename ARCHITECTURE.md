@@ -63,6 +63,14 @@ own. Every change is a cronward command.
   `run` goes without `--wait`: exit 0 means started, not passed, and
   `actionResult()` says so; exit 1 is a start that did not go through, with
   cronward's reason from stdout; the `--on` failures as elsewhere.
+- Remove account: `accountAction(account, host)` is the same kind of
+  question for `token remove NAME`, naming the GitHub account to sign in as
+  to delete the token there. `removeAccount(view, name)` allows it only when
+  the status was read and no job's `account` is NAME, with a tip naming the
+  jobs otherwise. `actionResult()` tells a cronward that took
+  `[accounts.NAME]` out ("removed [accounts."), one that kept it for a job
+  ("note: kept"), and one from before 2026-11-05 that only deleted the
+  token, which is told to update or use Config.
 - `setupWorkflowPrompt()` is `setupPrompt()` plus the picked repo and
   workflow file, as data. `addAccountLine()` reads the new account's name in
   the terminal and runs `token set` with it, on the main machine.
@@ -107,7 +115,10 @@ own. Every change is a cronward command.
   `blocked`, so the dialog has the keys. Only its `onConfirmed` calls
   `answer(true)`, the one place the fifth `Process` runs (a test checks
   this). After the command, cronward's lines show over the jobs until the
-  popup closes, and Check now reads the status again.
+  popup closes, and Check now reads the status again. Remove account, below
+  an account's repos, asks the same way; its lines show on the picker with
+  the token page button, and the workflows are listed again. The button
+  stays hoverable when it cannot remove, so its tooltip says why.
 - `BarIconButton`: `active` unless quiet, `activeColor` urgent for `bad`
   and the theme's orange for `warn`, `dimmed` when every job passed and
   nothing is running. Vertical bars show only the icon.
@@ -119,8 +130,9 @@ own. Every change is a cronward command.
 - All text is rendered with `Text.PlainText`; a test checks every `Text`.
 - IPC target `io.github.frestina.cronward`: `open`, `close`, `toggle`,
   `refresh`, `check`, `workflows` (opens the picker), `add ACCOUNT REPO
-  FILE` (opens the add form), `askRun JOB` and `askRemove JOB` (open the
-  question, as the row's buttons do; nothing runs without its yes).
+  FILE` (opens the add form), `askRun JOB`, `askRemove JOB` and
+  `askRemoveAccount ACCOUNT` (open the question, as the buttons do; nothing
+  runs without its yes).
 
 ## `demo/`
 
@@ -133,7 +145,9 @@ own. Every change is a cronward command.
 - `fixtures/add/`: what `cronward add` prints when it added a job, and its
   stderr when GitHub's check refused one.
 - `fixtures/action/`: what `cronward run` prints when it started a run and
-  when the start did not go through, and what `cronward remove` prints.
+  when the start did not go through, what `cronward remove` prints, and
+  what `cronward token remove` prints: the account removed, kept for a job,
+  and from a cronward too old to take it out.
 - `cronward`: a fake that prints the fixture named in
   `$XDG_RUNTIME_DIR/cronward-demo` with its times moved to now, or the
   stderr of the not-set-up and error states. It takes `--on HOST` as

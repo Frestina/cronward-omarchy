@@ -14,7 +14,9 @@
 #   press Enter in it (with wtype) and show what came of it. run-confirm and
 #   remove-confirm show the question for the job "nightly"; run-cancelled
 #   answers it with Esc, and run-started, run-refused, remove-done and
-#   action-unreachable with Tab and Enter (yes).
+#   action-unreachable with Tab and Enter (yes). account-confirm asks to
+#   remove the account "work" on the picker; account-removed and account-old
+#   answer yes, as a current cronward and one from before 2026-11-05.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 region=${1:?usage: demo/run "<x>,<y> <w>x<h>" [STATE...]}
@@ -71,6 +73,13 @@ for state in "${states[@]}"; do
       wtype -k Return
       sleep 2.5
     fi
+  elif [[ $state == account-* ]]; then
+    command -v wtype >/dev/null || { echo "demo: $state needs wtype" >&2; exit 1; }
+    qs ipc --pid "$pid" call "$id" workflows
+    sleep 2
+    qs ipc --pid "$pid" call "$id" askRemoveAccount work
+    sleep 0.8
+    [[ $state == account-confirm ]] || { wtype -k Tab -k Return; sleep 3.5; }
   elif [[ $state =~ ^(run|remove|action)- ]]; then
     command -v wtype >/dev/null || { echo "demo: $state needs wtype" >&2; exit 1; }
     qs ipc --pid "$pid" call "$id" open

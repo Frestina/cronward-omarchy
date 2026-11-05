@@ -71,7 +71,12 @@ page that says which GitHub account to sign in as, and an account whose
 repos could not be listed says why without hiding the others. **Add
 account** stores a token for another GitHub account in a terminal on the
 main machine; cronward adds the account to its config itself (its `main`
-from 2026-11-05). The list asks GitHub for every repo, so it runs only when
+from 2026-11-05). **Remove account**, below an account's repos, asks first,
+then deletes its token on the main machine and takes it out of cronward's
+config (`cronward token remove`). Not while a job uses it: the button is
+dimmed, and its tooltip names the jobs to remove first. The token itself
+stays on GitHub until you delete it there; the token page is one click away
+afterwards. The list asks GitHub for every repo, so it runs only when
 you open it, or press <kbd>r</kbd> there; <kbd>Esc</kbd> goes back.
 
 **Add job** (the + on a workflow) adds it as a job without the agent, with
@@ -136,7 +141,8 @@ machine through `cronward --on <host>`.
 - **Token**: GitHub's fine-grained token page, to give a token access to
   another repo.
 - **Workflows**: the list above (`cronward workflows --json`). Its agent
-  buttons, **Add job** (`cronward add`), **Add account** (`cronward token set <name>`) and each account's
+  buttons, **Add job** (`cronward add`), **Remove account** (`cronward
+  token remove <name>`, asked first), **Add account** (`cronward token set <name>`) and each account's
   token page button.
 - **The key** next to a missing or expiring token: a terminal running
   `cronward token set <account>`. You type the token there; the widget never

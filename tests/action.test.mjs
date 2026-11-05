@@ -98,3 +98,69 @@ test("--on failing: ssh, a key that only reads the status, an old cronward, none
   const none = View.actionResult(run, { started: false, exitCode: 0, stdout: "", stderr: "" }, "")
   assert.deepEqual([none.kind, none.level], ["missing", "bad"])
 })
+
+// --- Remove account, on the picker ------------------------------------------
+
+function status(name) {
+  const stdout = fs.readFileSync(new URL(`../demo/fixtures/${name}.json`, import.meta.url), "utf8")
+  return View.model({ started: true, exitCode: 0, stdout, stderr: "" }, "homeserver", Date.now())
+}
+
+const work = { name: "work", owner: "acme" }
+const removeWork = View.accountAction(work, "homeserver")
+
+test("Remove account: the command through --on, and a question that says what happens", () => {
+  assert.deepEqual(removeWork.args, ["--on", "homeserver", "token", "remove", "work"])
+  assert.deepEqual(View.accountAction(work, "").args, ["token", "remove", "work"])
+  assert.equal(removeWork.question, "Remove the account work from cronward on homeserver? Its token "
+    + "is deleted there, and [accounts.work] leaves the config. The token itself stays on GitHub "
+    + "until you delete it on GitHub's token page, signed in as acme.")
+  assert.equal(removeWork.confirmText, "Remove")
+  assert.deepEqual(View.confirmed(removeWork, false), null)
+})
+
+test("not while a job uses the account, which the button's tip names", () => {
+  const view = status("mixed")
+  assert.equal(view.rows[0].account, "personal")
+  assert.deepEqual(View.removeAccount(view, "personal"), { enabled: false,
+    tip: "Remove the jobs nightly, backup-check, drift, weekly-links first: they use personal" })
+  const one = { ...view, rows: view.rows.slice(0, 1) }
+  assert.equal(View.removeAccount(one, "personal").tip, "Remove the job nightly first: it uses personal")
+  assert.equal(View.removeAccount(view, "work").enabled, true)
+  assert.equal(View.removeAccount(status("no-jobs"), "personal").enabled, true)
+})
+
+test("not before the status says which jobs use it", () => {
+  for (const view of [null, View.model({ started: true, exitCode: 2, stdout: "",
+    stderr: "cronward: no status from homeserver yet\n" }, "homeserver", Date.now())]) {
+    const r = View.removeAccount(view, "work")
+    assert.equal(r.enabled, false)
+    assert.match(r.tip, /^The status is not read, so which jobs use work is not known yet$/)
+  }
+})
+
+test("removed: cronward's lines, and the token on GitHub is the user's to delete", () => {
+  const r = result(removeWork, 0, fixture("account-removed"))
+  assert.deepEqual([r.kind, r.level], ["done", "ok"])
+  assert.equal(r.message, "removed the token for work\nremoved [accounts.work] from "
+    + "/home/me/.config/cronward/config.toml\nThe token still exists on GitHub: delete it on the token page.")
+})
+
+test("an older cronward deletes the token and keeps the account: say so, and Config", () => {
+  const r = result(removeWork, 0, fixture("account-old"))
+  assert.deepEqual([r.kind, r.level], ["old", "warn"])
+  assert.match(r.message, /^removed the token for work\ncronward on homeserver is too old to take \[accounts\.work\] out of its config: update it, or take it out with Config\./)
+})
+
+test("kept, as a job uses it after all: cronward's note", () => {
+  const r = result(removeWork, 0, fixture("account-kept"))
+  assert.deepEqual([r.kind, r.level], ["kept", "warn"])
+  assert.match(r.message, /note: kept \[accounts\.work\]/)
+})
+
+test("Remove account with --on failing, or refused", () => {
+  assert.equal(result(removeWork, 2, "", SSH).kind, "unreachable")
+  assert.match(result(removeWork, 1, "", "cronward: this key only reads the status\n").message,
+    /cannot remove accounts/)
+  assert.equal(result(removeWork, 2, "", "").message, "`cronward token remove work` exited 2")
+})

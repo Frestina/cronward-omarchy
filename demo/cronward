@@ -12,7 +12,9 @@
 # refuse as GitHub's check would, or fail as ssh would. `run` and `remove`
 # print demo/fixtures/action/run-started.txt and removed.txt; in the state
 # "run-refused" the start does not go through, and in "action-unreachable"
-# both fail as ssh would. Fictional names only.
+# both fail as ssh would. `token remove` prints action/account-removed.txt,
+# or in the state "account-old" account-old.txt, as a cronward from before
+# it took the account out of the config. Fictional names only.
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 state=$(head -n1 "${XDG_RUNTIME_DIR:-/tmp}/cronward-demo" 2>/dev/null || true)
@@ -48,6 +50,14 @@ case ${1:-} in
     if [[ $1 == remove ]]; then cat "$here/fixtures/action/removed.txt"; exit 0; fi
     if [[ $state == run-refused ]]; then cat "$here/fixtures/action/run-refused.txt"; exit 1; fi
     cat "$here/fixtures/action/run-started.txt"; exit 0 ;;
+  token)
+    if [[ ${2:-} == remove ]]; then
+      sleep 1
+      if [[ $state == account-old ]]; then cat "$here/fixtures/action/account-old.txt"
+      else cat "$here/fixtures/action/account-removed.txt"; fi
+      exit 0
+    fi
+    echo "demo: cronward $*: nothing done, this is the demo"; exit 0 ;;
   watch) sleep 1; exit 0 ;;
   *) echo "demo: cronward $*: nothing done, this is the demo" ; exit 0 ;;
 esac
@@ -55,7 +65,7 @@ case $state in
   not-set-up) echo "cronward: no config at $HOME/.config/cronward/config.toml; write one with: cronward init" >&2; exit 2 ;;
   error) echo "cronward: state.json does not read: Expecting value: line 1 column 1 (char 0)" >&2; exit 2 ;;
 esac
-case $state in workflows-*|add-*|run-*|remove-*|action-*) state=mixed ;; esac
+case $state in workflows-*|add-*|run-*|remove-*|action-*|account-*) state=mixed ;; esac
 fixture=$here/fixtures/$state.json
 [[ -f $fixture ]] || { echo "demo: no fixture $state" >&2; exit 2; }
 python3 -I - "$fixture" <<'PY'

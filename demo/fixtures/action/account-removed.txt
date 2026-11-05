@@ -1,0 +1,2 @@
+removed the token for work
+removed [accounts.work] from /home/me/.config/cronward/config.toml
