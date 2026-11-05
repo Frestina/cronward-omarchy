@@ -104,7 +104,11 @@ ask before a test run or a push.
     (`cronward install --viewer homeserver`). For the buttons that change
     something there (Config, storing a token, Add job, Run now, Remove,
     Set up with agent), an ssh
-    login to it that can run commands, as `cronward --on` needs.
+    login to it that can run commands, as `cronward --on` needs. A job
+    added or removed there shows on the laptop at once with cronward's
+    `main` from 2026-11-05, which writes the status again after `add` and
+    `remove`; before that, after the main machine's next tick and the
+    laptop's next fetch.
 
 ## Install
 
