@@ -27,12 +27,19 @@ regardless:
   deploys, releases, messages. Ask before starting one that has effects.
 - **The repo is the user's.** Commit and push the workflow change the way
   the repo does it, and ask before pushing when unsure.
+- **Commit as the repo owner's account.** Someone with more than one GitHub
+  account often sets the git identity per folder. Before committing, check
+  that `git config user.email` in the clone belongs to the repo's owner. If
+  it doesn't, or a hook refuses the commit, stop and ask. Never use
+  `--no-verify`, and never change their global git or `gh` settings.
 
 ## Steps
 
 1. **Check cronward.** Run `cronward status` (with `--on <host>`). If it
    fails, explain the message and stop: cronward needs to be installed and
-   set up first (its README, Install).
+   set up first (its README, Install). `status` names the main machine by
+   its own hostname, which can differ from the name passed to `--on` (an
+   ssh alias): that is the same machine.
 2. **Pick the workflow.** Ask which repo and workflow, and when it should
    run. `cronward workflows --json` lists the repos and workflows the
    stored tokens reach, and `jobs` names the ones already on cronward. A repo
@@ -41,9 +48,19 @@ regardless:
    `cronward workflows <account>` prints the same as text.
 3. **Find the repo's local clone.** Ask the user where it is, or look in
    their usual project folders (`~/Projects`, `~/Work`, `~/src`, `~/code`)
-   for a clone whose `git remote get-url origin` is that repo. Don't scan the
-   whole disk. With no clone, offer to clone it into a folder the user picks,
-   and do so only if they say yes. Work in that clone from here on.
+   for a clone whose `git remote get-url origin` ends in that repo's
+   `owner/name` (with or without `.git`). Match only that part: the host
+   can be an ssh alias such as `git@github-work:me/widget.git`. Don't scan
+   the whole disk. With no clone, offer to clone it, and do so only if they
+   say yes. Suggest the folder where their other clones from the same
+   owner are (that folder may set the git identity for that account), and
+   let them pick. Work in that clone from here on.
+   - If cloning says "not found" or "repository does not exist", the user
+     may have more than one GitHub account, and their default ssh key or
+     `gh` login may be another one. Look in `~/.ssh/config` for a `Host`
+     alias meant for the repo owner's account and clone through it
+     (`git@<alias>:owner/name.git`), or ask the user. Don't read or copy
+     their keys, and don't switch their `gh` account.
 4. **Follow cronward's skill.** If you have the `cronward` skill, use it. If
    not, read it: `skills/cronward/SKILL.md` in cronward's install, found with
    `readlink -f "$(command -v cronward || echo ~/.local/bin/cronward)"`,
@@ -52,8 +69,12 @@ regardless:
    It covers the rest: adding `workflow_dispatch:`, `cronward add`, a test
    with `cronward run <job> --wait`, and taking out `schedule:` once a run has
    passed. Skip its "Find the machine" section: the prompt already says where
-   cronward runs.
-5. **Finish with a summary**: the job's name, its schedule and time zone, the
-   next slot, the test run's URL, and what you changed in the repo. The
+   cronward runs. A workflow that already has `workflow_dispatch:` and no
+   `schedule:` needs no change in the repo: say so, and go on to `cronward
+   add` and the test run.
+5. **Finish with a summary**: the job's name, its schedule and the time zone
+   cronward reads it in, the next slot in the user's local time (as the
+   widget shows it; `next` in `cronward status --json` is a Unix time), the
+   test run's URL, and what you changed in the repo. The
    widget shows the job within a minute; on a laptop, its result arrives with
    the next hourly fetch, or at once with Check now.
