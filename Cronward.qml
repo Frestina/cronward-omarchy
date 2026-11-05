@@ -214,9 +214,21 @@ Panel {
     anchors.fill: parent
     bar: root.bar
     // A count of what needs attention; a small mark while a run is going.
-    text: vertical ? "󰃰"
-      : "󰃰" + (root.count > 0 ? " " + root.count : root.view && root.view.running ? " •" : "")
-    slotSize: Style.bar.iconSlot * (!vertical && (root.count > 0 || (root.view && root.view.running)) ? 1.6 : 1)
+    // Neither on a vertical bar: no room, and the tooltip says it. From
+    // Omarchy 4.5.0 the mark goes in labelText, as the battery's percentage
+    // does: the shell fits all of text into one icon's box, so a count there
+    // would shrink the glyph with it. An older shell has no labelText and
+    // draws text at its own size, so there the mark stays in text. Assigning
+    // labelText where it does not exist would fail the whole icon, hence the
+    // check.
+    readonly property string mark: vertical ? ""
+      : root.count > 0 ? String(root.count) : root.view && root.view.running ? "•" : ""
+    readonly property bool hasLabel: "labelText" in button
+    text: mark !== "" && !hasLabel ? "󰃰 " + mark : "󰃰"
+    Component.onCompleted: {
+      if (hasLabel) button.labelText = Qt.binding(function() { return button.mark })
+    }
+    slotSize: Style.bar.iconSlot * (mark !== "" ? 1.1 + 0.5 * mark.length : 1)
     active: root.level !== "quiet"
     activeColor: root.level === "bad" ? Color.urgent : root.warnColor
     // Quiet only when cronward said every job passed and the main machine ticks.
