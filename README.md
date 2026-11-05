@@ -4,7 +4,7 @@
 
 <p align="center"><a href="https://github.com/tcballard/omarchy-badges"><img alt="Built for Omarchy: Plugin" height="20" src="https://raw.githubusercontent.com/tcballard/omarchy-badges/75975e5b5bf75e7ede3764bcd2950046f7abfe2c/badges/v1/omarchy-plugin.svg"></a></p>
 
-<p align="center"><img alt="The cronward popup for the main machine homeserver: nightly failed in red, backup-check didn't run in orange because it had not finished after 6 hours, drift passed with a run going, and weekly-links passed. The failed and didn't-run jobs each have an agent button. The bar icon above is red with the count 2" src="preview.png" width="400"></p>
+<p align="center"><img alt="The cronward popup for the main machine homeserver: nightly failed in red, backup-check didn't run in orange because it had not finished after 6 hours, drift passed with a run going, and weekly-links passed. The failed and didn't-run jobs each have an agent button, and every job has Run now and Remove buttons. The bar icon above is red with the count 2" src="preview.png" width="400"></p>
 
 [cronward](https://github.com/Frestina/cronward) starts your workflows
 from a Linux machine you own, follows each run, and keeps three answers
@@ -55,6 +55,8 @@ chosen, so a click or Enter alone never does anything:
 
 After either, the popup reads the status again (on a laptop, it fetches it
 first).
+
+<p align="center"><img alt="The Workflows page for homeserver: the account personal (me on GitHub) with the repos dotfiles and widget, each with 1 on cronward; widget is open, showing check.yml on cronward as nightly, deploy.yml turned off in GitHub, and release.yml, each with an add button and an agent button; a folded card of 2 repos with no workflows, and a dimmed Remove account. Below, the account work (acme on GitHub) with the repo api, 2 repos with no workflows and Remove account. The footer has Add account, Token and Set up with agent" src="docs/workflows.png" width="400"></p>
 
 **Workflows**, at the bottom of the popup, lists the repos and workflows
 each account's token reaches, from `cronward workflows --json` on the main

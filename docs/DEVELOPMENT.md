@@ -32,7 +32,10 @@ answers it with Esc, and `run-started`, `run-refused`, `remove-done` and
 account `work` on the picker, and `account-removed` and `account-old` answer
 yes, from a current cronward and an older one. With no state it
 writes `preview.png` from `mixed`; check that it shows only fictional names
-before committing it.
+before committing it. Capture the popup and the bar icon above it, 422
+logical pixels wide from its left edge less one. `docs/workflows.png` is
+`workflows-list` with the repo `widget` open: start `openRepos` as
+`{"personal/me/widget": true}` for the capture, then put it back.
 
 Over IPC: `qs ipc call io.github.frestina.cronward open|close|toggle|refresh|check|workflows`,
 `add ACCOUNT OWNER/REPO FILE` for the add form, and `askRun JOB` or
