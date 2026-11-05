@@ -10,6 +10,7 @@
     "omarchy plugin enable io.github.frestina.cronward, linked from the checkout, with host set to the main machine on a viewer laptop",
     "omarchy restart shell, after each change to Cronward.qml",
     "Set up with agent, Ask agent, Config, Token, a row's link and Check now, clicked by hand in the installed widget",
+    "A theme switch, and the bar moved to vertical, by hand",
     "demo/run \"600,0 680x440\" token-expiring no-token"
   ],
   "results": [
@@ -20,10 +21,12 @@
     "Config opened the main machine's config in an editor, in a terminal. Token opened GitHub's token page.",
     "Omarchy 4.5.0 bar: the count shows beside the glyph at full size, in red (failed) and orange (didn't run, a token), after the fix in 1afb3db.",
     "The account key button shows beside a missing or expiring token (demo/run, fictional data). Not clicked: it would run token set on the fictional host.",
+    "A theme switch: the widget followed the new theme.",
+    "A vertical bar: the icon shows without the count, as designed (no room; the tooltip says it), in the same colour as on a horizontal bar. The user's other bar plugins do the same.",
     "On 2026-11-04, on Omarchy 4.0.6: Check now over IPC ran cronward watch and moved 'as of' forward, and every fixture state, plus not set up and error, rendered distinct (demo/run)."
   ],
   "limitations": [
-    "Not yet tried: a vertical bar, a theme switch, several monitors, and the running mark in the bar on Omarchy 4.5.0.",
+    "Not yet tried: several monitors, and the running mark in the bar on Omarchy 4.5.0.",
     "The account key button was seen, not clicked, against a real missing or expiring token.",
     "The pre-4.5.0 path of the bar count (text, without labelText) was not run again after the fix; it is the same code as before the fix.",
     "Not yet tried on the main machine itself (host blank) with a real cronward."
