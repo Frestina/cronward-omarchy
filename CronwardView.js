@@ -111,6 +111,12 @@ function setupPrompt(host, pluginDir) {
     + "/docs/AGENT_SETUP.md. " + whereCronward(host)
 }
 
+// The agent button on a picked workflow.
+function setupTip(w) {
+  return (w.jobs && w.jobs.length ? "Set another schedule for " : "Set a schedule for ")
+    + w.file + ", with your agent"
+}
+
 // From the picker: the repo and workflow are chosen; the agent asks the rest.
 function setupWorkflowPrompt(host, pluginDir, repo, file) {
   return setupPrompt(host, pluginDir) + " I picked the workflow in the widget; the repo and "
@@ -144,12 +150,31 @@ function ownerOf(repo) {
   return String(repo || "").split("/")[0]
 }
 
+// The owner of most of an account's repos: a token belongs to one GitHub
+// account, though it can also reach repos it was invited to elsewhere.
+function mainOwner(repos) {
+  var counts = {}, best = "", most = 0
+  repos.forEach(function(r) {
+    var o = ownerOf(r.repo)
+    if (!o) return
+    counts[o] = (counts[o] || 0) + 1
+    if (counts[o] > most) { most = counts[o]; best = o }
+  })
+  return best
+}
+
+// A repo as the picker shows it: without the owner when it is the account's
+// main one, which the account's header already says; in full otherwise.
+function repoLabel(repo, owner) {
+  var r = String(repo)
+  return owner && r.toLowerCase().indexOf(owner.toLowerCase() + "/") === 0 ? r.slice(owner.length + 1) : r
+}
+
 function pickerAccount(a) {
   var repos = Array.isArray(a.repos) ? a.repos : []
-  var owners = repos.map(function(r) { return ownerOf(r.repo) })
-    .filter(function(o, i, all) { return o && all.indexOf(o) === i })
+  var owner = mainOwner(repos)
   var out = { name: String(a.account || "?"), error: a.error ? String(a.error) : "",
-              owner: owners.length === 1 ? owners[0] : "", repos: [], bare: [], github: [],
+              owner: owner, repos: [], bare: [], github: [],
               empty: !a.error && repos.length === 0 }
   repos.forEach(function(r) {
     var flows = Array.isArray(r.workflows) ? r.workflows : []
@@ -165,18 +190,20 @@ function pickerAccount(a) {
     })
     // A repo's header, collapsed: how many workflows, and how many are jobs.
     var jobs = own.filter(function(w) { return w.jobs.length > 0 }).length
-    var entry = { repo: String(r.repo), error: r.error ? String(r.error) : "", workflows: own,
+    var entry = { repo: String(r.repo), label: repoLabel(r.repo, owner),
+                  error: r.error ? String(r.error) : "", workflows: own,
                   onCronward: jobs,
                   summary: r.error ? "cannot list its workflows"
                     : own.length + (own.length === 1 ? " workflow" : " workflows") }
     if (r.error || own.length) out.repos.push(entry)
-    else out.bare.push(String(r.repo))
+    else out.bare.push(repoLabel(r.repo, owner))
   })
   var listed = out.repos.length
   var onCronward = out.repos.reduce(function(n, r) { return n + r.onCronward }, 0)
   out.onCronward = onCronward
   out.summary = out.error ? "" : listed + (listed === 1 ? " repo" : " repos")
     + (onCronward ? " · " + onCronward + " on cronward" : "")
+  out.bareSummary = out.bare.length + (out.bare.length === 1 ? " repo" : " repos")
   out.tokenTip = "Give the token for " + out.name + " access to more repos, on GitHub's token page"
     + (out.owner ? ". Sign in to GitHub as " + out.owner + " first" : "")
   return out
@@ -195,9 +222,17 @@ function picker(run, host) {
   var data = null
   try { data = JSON.parse(run.stdout) } catch (e) { data = null }
   if (data && Array.isArray(data.accounts))
-    return { kind: "list", accounts: data.accounts.map(pickerAccount),
+  {
+    var accounts = data.accounts.map(pickerAccount)
+    // GitHub's own workflows, named once for the whole list.
+    var github = []
+    accounts.forEach(function(a) {
+      a.github.forEach(function(f) { if (github.indexOf(f) < 0) github.push(f) })
+    })
+    return { kind: "list", accounts: accounts, github: github,
              message: data.accounts.length ? "" : "No accounts on " + where + " yet: add one below.",
              partial: run.exitCode !== 0 }
+  }
   var err = String(run.stderr || "")
   var reason = lastLine(err)
   if (/this key only reads the status/.test(err))
@@ -368,7 +403,7 @@ if (typeof module !== "undefined") {
     quote: quote, when: when, asData: asData, safeUrl: safeUrl, statusArgs: statusArgs,
     checkArgs: checkArgs, onMain: onMain, processArgv: processArgv, shellLine: shellLine,
     terminal: terminal, open: open, agent: agent, setupPrompt: setupPrompt,
-    setupWorkflowPrompt: setupWorkflowPrompt, workflowsArgs: workflowsArgs,
+    setupWorkflowPrompt: setupWorkflowPrompt, setupTip: setupTip, workflowsArgs: workflowsArgs,
     addAccountLine: addAccountLine, picker: picker,
     explainPrompt: explainPrompt, classify: classify, model: model }
 }

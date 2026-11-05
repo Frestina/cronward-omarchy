@@ -46,6 +46,7 @@ test("collapsed headers: each repo's and account's count, and how many are on cr
     [["1 workflow", 1], ["3 workflows", 1]])
   assert.deepEqual([personal.summary, personal.onCronward], ["2 repos · 2 on cronward", 2])
   assert.equal(work.summary, "1 repo")
+  assert.equal(work.bareSummary, "2 repos")
   const broken = pick("repo-error").accounts[0].repos[1]
   assert.deepEqual([broken.summary, broken.onCronward], ["cannot list its workflows", 0])
   assert.equal(pick("account-error", 2).accounts[1].summary, "")
@@ -56,11 +57,22 @@ test("a workflow turned off says so", () => {
   assert.deepEqual(widget.workflows.map(w => w.state), ["", "turned off in GitHub", ""])
 })
 
-test("GitHub's own workflows are left out, and repos with no workflow of their own are named apart", () => {
-  const personal = pick("list").accounts[0]
-  assert.deepEqual(personal.github, ["pages-build-deployment", "dependabot-updates"])
-  assert.deepEqual(personal.bare, ["me/notes", "me/site"])
+test("GitHub's own workflows are left out and named once, and repos with no workflow of their own are apart", () => {
+  const p = pick("list")
+  const personal = p.accounts[0]
+  assert.deepEqual(p.github, ["pages-build-deployment", "dependabot-updates"])
+  assert.deepEqual([personal.bare, personal.bareSummary], [["notes", "site"], "2 repos"])
   assert.ok(!JSON.stringify(personal.repos).includes("dependabot-updates"))
+})
+
+test("repos show without the account's main owner, and in full from another owner", () => {
+  const [personal, work] = pick("list").accounts
+  assert.deepEqual(personal.repos.map(r => [r.label, r.repo]), [["dotfiles", "me/dotfiles"], ["widget", "me/widget"]])
+  assert.equal(work.owner, "acme")
+  assert.deepEqual(work.repos.map(r => r.label), ["api"])
+  assert.deepEqual(work.bare, ["docs", "partner/tools"])
+  // The agent still gets the full name.
+  assert.equal(work.repos[0].workflows[0].repo, "acme/api")
 })
 
 test("an account with an error keeps the other accounts (exit 2)", () => {
@@ -121,6 +133,14 @@ test("commands: workflows and a new account run on the main machine, through --o
   const line = View.addAccountLine("cronward", "homeserver")
   assert.match(line, /^printf "Name for the account in cronward .*"; read -r n && c='cronward'; /)
   assert.match(line, /"\$c" '--on' 'homeserver' 'token' 'set' "\$n"$/)
+})
+
+test("the agent button says it sets a schedule, or another one", () => {
+  const widget = pick("list").accounts[0].repos[1]
+  assert.deepEqual(widget.workflows.map(View.setupTip), [
+    "Set another schedule for check.yml, with your agent",
+    "Set a schedule for deploy.yml, with your agent",
+    "Set a schedule for release.yml, with your agent"])
 })
 
 test("the set-up prompt for a picked workflow quotes it as data", () => {

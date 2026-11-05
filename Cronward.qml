@@ -679,22 +679,13 @@ Panel {
                     spacing: Style.space(4)
 
                     PanelSectionHeader {
-                      Layout.fillWidth: true
+                      Layout.maximumWidth: accountHead.width * 0.6
                       text: (account.modelData.name + (account.modelData.owner
                         && account.modelData.owner.toLowerCase() !== account.modelData.name.toLowerCase()
                         ? " · " + account.modelData.owner + " on GitHub" : "")).toUpperCase()
                       foreground: root.barForeground
                       fontFamily: root.bar.fontFamily
                       elide: Text.ElideRight
-                    }
-
-                    Text {
-                      visible: !account.open && account.modelData.summary !== ""
-                      textFormat: Text.PlainText
-                      text: account.modelData.summary
-                      color: root.dim(0.55)
-                      font.family: root.bar.fontFamily
-                      font.pixelSize: Style.font.caption
                     }
 
                     // Typed in the terminal, on the main machine; the widget never sees it.
@@ -718,6 +709,17 @@ Panel {
                       foreground: root.barForeground
                       fontFamily: root.bar.fontFamily
                       onClicked: root.openTokenPage()
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    Text {
+                      visible: !account.open && account.modelData.summary !== ""
+                      textFormat: Text.PlainText
+                      text: account.modelData.summary
+                      color: root.dim(0.55)
+                      font.family: root.bar.fontFamily
+                      font.pixelSize: Style.font.caption
                     }
 
                     Text {
@@ -787,7 +789,7 @@ Panel {
                           Text {
                             Layout.fillWidth: true
                             textFormat: Text.PlainText
-                            text: repoBlock.modelData.repo
+                            text: repoBlock.modelData.label
                             color: root.barForeground
                             font.family: root.bar.fontFamily
                             font.pixelSize: Style.font.body
@@ -907,9 +909,7 @@ Panel {
 
                           PanelActionButton {
                             iconText: "󰚩"
-                            tooltipText: flow.modelData.jobs.length > 0
-                              ? "Give " + flow.modelData.file + " another schedule, with your agent"
-                              : "Put " + flow.modelData.file + " on cronward, with your agent"
+                            tooltipText: View.setupTip(flow.modelData)
                             size: Style.space(18)
                             fontSize: Style.font.caption
                             foreground: root.barForeground
@@ -922,26 +922,87 @@ Panel {
                   }
                 }
 
-                Text {
-                  visible: account.open && account.modelData.bare.length > 0
-                  width: parent.width
-                  textFormat: Text.PlainText
-                  text: "No workflows: " + account.modelData.bare.join(", ")
-                  wrapMode: Text.Wrap
-                  color: root.dim(0.5)
-                  font.family: root.bar.fontFamily
-                  font.pixelSize: Style.font.caption
-                }
+                // ---------- The repos with no workflows: one folded card, one per line ----------
+                Rectangle {
+                  id: bareBlock
+                  readonly property bool open: !!root.openRepos[account.modelData.name + "/:bare"]
 
-                Text {
-                  visible: account.open && account.modelData.github.length > 0
-                  width: parent.width
-                  textFormat: Text.PlainText
-                  text: "Left out, as GitHub runs them itself: " + account.modelData.github.join(", ")
-                  wrapMode: Text.Wrap
-                  color: root.dim(0.5)
-                  font.family: root.bar.fontFamily
-                  font.pixelSize: Style.font.caption
+                  visible: account.open && account.modelData.bare.length > 0
+                  width: account.width
+                  implicitHeight: bareColumn.implicitHeight + Style.space(16)
+                  radius: Style.cornerRadius
+                  color: bareMouse.containsMouse && !open ? root.dim(0.06) : "transparent"
+                  border.width: 1
+                  border.color: root.dim(0.08)
+
+                  Column {
+                    id: bareColumn
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: Style.space(8)
+                    spacing: Style.space(6)
+
+                    Item {
+                      width: parent.width
+                      implicitHeight: bareHead.implicitHeight
+
+                      MouseArea {
+                        id: bareMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.openRepos = root.toggled(root.openRepos, account.modelData.name + "/:bare")
+                      }
+
+                      RowLayout {
+                        id: bareHead
+                        width: parent.width
+                        spacing: Style.space(8)
+
+                        Text {
+                          Layout.fillWidth: true
+                          textFormat: Text.PlainText
+                          text: "No workflows"
+                          color: root.dim(0.7)
+                          font.family: root.bar.fontFamily
+                          font.pixelSize: Style.font.bodySmall
+                        }
+
+                        Text {
+                          textFormat: Text.PlainText
+                          text: account.modelData.bareSummary
+                          color: root.dim(0.55)
+                          font.family: root.bar.fontFamily
+                          font.pixelSize: Style.font.caption
+                        }
+
+                        Text {
+                          textFormat: Text.PlainText
+                          text: bareBlock.open ? "󰅀" : "󰅂"
+                          color: root.dim(0.7)
+                          font.family: root.bar.fontFamily
+                          font.pixelSize: Style.font.body
+                        }
+                      }
+                    }
+
+                    Repeater {
+                      model: bareBlock.open ? account.modelData.bare : []
+
+                      delegate: Text {
+                        required property var modelData
+                        width: bareColumn.width
+                        leftPadding: Style.space(8)
+                        textFormat: Text.PlainText
+                        text: modelData
+                        color: root.dim(0.6)
+                        font.family: root.bar.fontFamily
+                        font.pixelSize: Style.font.caption
+                        elide: Text.ElideRight
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -950,7 +1011,9 @@ Panel {
               visible: !!root.pickerView && root.pickerView.kind === "list"
               width: parent.width
               textFormat: Text.PlainText
-              text: "Repos from another GitHub account need a token of their own: Add account."
+              text: ((root.pickerView && (root.pickerView.github || []).length > 0
+                ? "Not listed: " + root.pickerView.github.join(", ") + ", which GitHub runs itself. " : "")
+                + "Repos from another GitHub account need a token of their own: Add account.")
               wrapMode: Text.Wrap
               color: root.dim(0.45)
               font.family: root.bar.fontFamily

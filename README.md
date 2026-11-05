@@ -42,11 +42,12 @@ could do, and changes nothing without asking.
 
 **Workflows**, at the bottom of the popup, lists the repos and workflows
 each account's token reaches, from `cronward workflows --json` on the main
-machine. Each repo is a card, folded until you click it; its header says
-how many workflows it has, and a green mark how many are on cronward
-already. Open, a workflow that is a job names it in green. Each has an
-agent button that puts that workflow on cronward with you. Click an
-account's header to fold it too. GitHub's own
+machine. Under each account, each repo is a card named without the
+account's owner, folded until you click it; its header says how many
+workflows it has, and a green mark how many are on cronward already. Open,
+a workflow that is a job names it in green. Each has an agent button that
+sets a schedule for that workflow with you. Repos with no workflows share
+one folded card, and an account's header folds it all. GitHub's own
 workflows, such as `dependabot-updates`, are left out, as nothing can start
 them. Each account has its own section, with a button to GitHub's token
 page that says which GitHub account to sign in as, and an account whose

@@ -39,9 +39,11 @@ own. Every change is a cronward command.
   missing, an ssh login that only reads the status, a cronward too old for
   `workflows --json` or `--on`, ssh failing, no accounts yet, or anything
   else as an error. Workflows without a `.yml` or `.yaml` file are GitHub's
-  own (`dependabot-updates`) and are left out; repos with none of their own
-  are named apart. An account's GitHub owner, when its repos share one,
-  goes in its token page tooltip.
+  own (`dependabot-updates`) and are left out, named once for the whole
+  list; repos with none of their own are named apart. An account's main
+  owner is the owner of most of its repos: its repos show without it
+  (`label`), others in full, and its token page tooltip names it. The agent
+  always gets the full `owner/name`.
 - `setupWorkflowPrompt()` is `setupPrompt()` plus the picked repo and
   workflow file, as data. `addAccountLine()` reads the new account's name in
   the terminal and runs `token set` with it, on the main machine.
@@ -71,7 +73,8 @@ own. Every change is a cronward command.
   and accounts open; which are toggled is kept by name (`openRepos`,
   `closedAccounts`), so listing again keeps them. `picker()` gives each
   repo and account a `summary` and an `onCronward` count for the folded
-  headers. "On cronward" is the theme's `green`, else `color2`, else the
+  headers, and `bareSummary` for the one folded card of repos with no
+  workflows. "On cronward" is the theme's `green`, else `color2`, else the
   accent.
 - `BarIconButton`: `active` unless quiet, `activeColor` urgent for `bad`
   and the theme's orange for `warn`, `dimmed` when every job passed and
