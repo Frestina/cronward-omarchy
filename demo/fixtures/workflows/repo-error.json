@@ -1,0 +1,30 @@
+{
+ "accounts": [
+  {
+   "account": "personal",
+   "error": null,
+   "repos": [
+    {
+     "error": null,
+     "repo": "me/dotfiles",
+     "workflows": [
+      {
+       "file": "drift.yml",
+       "id": 11,
+       "jobs": [
+        "drift"
+       ],
+       "name": "Drift",
+       "state": "active"
+      }
+     ]
+    },
+    {
+     "error": "cannot list workflows (403: the token may lack Actions access here)",
+     "repo": "me/widget",
+     "workflows": []
+    }
+   ]
+  }
+ ]
+}

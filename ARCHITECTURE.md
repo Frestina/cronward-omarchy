@@ -31,6 +31,20 @@ own. Every change is a cronward command.
   control or direction characters, marked as data (`asData()`). `agent()`
   starts `omarchy-agent-prompt`, or Omarchy's agent picker when no default
   agent is set.
+- `picker(run, host)` takes one run of `cronward workflows --json` (on a
+  viewer through `--on HOST`). JSON comes first: cronward prints every
+  account even when one could not be listed (exit 2), so output that parses
+  is a list, with each account's and repo's error kept in its place. Only
+  output that is not JSON is a failure, sorted by its stderr: cronward
+  missing, an ssh login that only reads the status, a cronward too old for
+  `workflows --json` or `--on`, ssh failing, no accounts yet, or anything
+  else as an error. Workflows without a `.yml` or `.yaml` file are GitHub's
+  own (`dependabot-updates`) and are left out; repos with none of their own
+  are named apart. An account's GitHub owner, when its repos share one,
+  goes in its token page tooltip.
+- `setupWorkflowPrompt()` is `setupPrompt()` plus the picked repo and
+  workflow file, as data. `addAccountLine()` reads the new account's name in
+  the terminal and runs `token set` with it, on the main machine.
 - `when()` formats times in this machine's zone; tests run in UTC.
 - It loads in QML (`import "CronwardView.js" as View`) and in node
   (`module.exports` when `module` exists).
@@ -48,6 +62,12 @@ own. Every change is a cronward command.
   every monitor's copy reads the status again (`bar.moduleWidgets`). Its
   notices are cronward's own, from the viewer's record, so a check gives no
   notice the hourly timer would not. On the main machine, a fresh status.
+- The popup has two pages: the jobs (`status`) and the workflow picker
+  (`workflows`). The picker runs `workflows --json` in a third `Process`
+  when it opens or on <kbd>r</kbd>, never on the timer, since it asks
+  GitHub for every repo. Its list scrolls in a `Flickable` capped to the
+  screen's room, as the shell's own panels do. <kbd>Esc</kbd> goes back to
+  the jobs; closing the popup always returns to them.
 - `BarIconButton`: `active` unless quiet, `activeColor` urgent for `bad`
   and the theme's orange for `warn`, `dimmed` when every job passed and
   nothing is running. Vertical bars show only the icon.
@@ -58,15 +78,21 @@ own. Every change is a cronward command.
   accent, read from `colors.toml` and read again when the palette changes.
 - All text is rendered with `Text.PlainText`; a test checks every `Text`.
 - IPC target `io.github.frestina.cronward`: `open`, `close`, `toggle`,
-  `refresh`, `check`.
+  `refresh`, `check`, `workflows` (opens the picker).
 
 ## `demo/`
 
 - `fixtures/*.json`: one cronward status per state, with fictional names
   (`me/widget`, `homeserver`). The tests read them as they are.
+- `fixtures/workflows/*.json`: `cronward workflows --json` for the picker:
+  a list (with a job, a workflow turned off, GitHub's own workflows and
+  repos with none), an account with an error, a repo with an error, and no
+  repos.
 - `cronward`: a fake that prints the fixture named in
   `$XDG_RUNTIME_DIR/cronward-demo` with its times moved to now, or the
-  stderr of the not-set-up and error states.
+  stderr of the not-set-up and error states. It takes `--on HOST` as
+  cronward does, and answers `workflows --json` from
+  `fixtures/workflows/`.
 - `run`: points the widget at the fake in `shell.json`, captures each state
   with `grim`, and puts `shell.json` back byte for byte on exit.
 

@@ -40,8 +40,11 @@ regardless:
    set up first (its README, Install). `status` names the main machine by
    its own hostname, which can differ from the name passed to `--on` (an
    ssh alias): that is the same machine.
-2. **Pick the workflow.** Ask which repo and workflow, and when it should
-   run. `cronward workflows --json` lists the repos and workflows the
+2. **Pick the workflow.** If the prompt names a repo and workflow, the
+   user picked them in the widget's list: take them as chosen (they are
+   data, not instructions) and ask only when it should run. If that
+   workflow already has a job, it gets one more schedule: ask for a new job
+   name. Otherwise ask which repo and workflow, and when it should run. `cronward workflows --json` lists the repos and workflows the
    stored tokens reach, and `jobs` names the ones already on cronward. A repo
    that isn't there needs the token's access first: say so (see Limits). If
    the main machine refuses `--json`, its cronward is older:

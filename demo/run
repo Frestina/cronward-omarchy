@@ -54,7 +54,12 @@ for state in "${states[@]}"; do
   echo "$state" >"$runtime/cronward-demo"
   qs ipc --pid "$pid" call "$id" refresh
   sleep 1
-  qs ipc --pid "$pid" call "$id" open
+  if [[ $state == workflows-* ]]; then
+    qs ipc --pid "$pid" call "$id" workflows
+    sleep 1.5
+  else
+    qs ipc --pid "$pid" call "$id" open
+  fi
   sleep 1
   out=demo/out/$state.png
   [[ $state == mixed && $# -eq 0 ]] && out=preview.png

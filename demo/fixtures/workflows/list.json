@@ -1,0 +1,105 @@
+{
+ "accounts": [
+  {
+   "account": "personal",
+   "error": null,
+   "repos": [
+    {
+     "error": null,
+     "repo": "me/dotfiles",
+     "workflows": [
+      {
+       "file": "drift.yml",
+       "id": 11,
+       "jobs": [
+        "drift"
+       ],
+       "name": "Drift",
+       "state": "active"
+      }
+     ]
+    },
+    {
+     "error": null,
+     "repo": "me/notes",
+     "workflows": []
+    },
+    {
+     "error": null,
+     "repo": "me/site",
+     "workflows": [
+      {
+       "file": "pages-build-deployment",
+       "id": 12,
+       "jobs": [],
+       "name": "pages-build-deployment",
+       "state": "active"
+      }
+     ]
+    },
+    {
+     "error": null,
+     "repo": "me/widget",
+     "workflows": [
+      {
+       "file": "check.yml",
+       "id": 13,
+       "jobs": [
+        "nightly"
+       ],
+       "name": "Check",
+       "state": "active"
+      },
+      {
+       "file": "deploy.yml",
+       "id": 14,
+       "jobs": [],
+       "name": "Deploy",
+       "state": "disabled_manually"
+      },
+      {
+       "file": "release.yml",
+       "id": 15,
+       "jobs": [],
+       "name": "Release",
+       "state": "active"
+      },
+      {
+       "file": "dependabot-updates",
+       "id": 16,
+       "jobs": [],
+       "name": "Dependabot Updates",
+       "state": "active"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "account": "work",
+   "error": null,
+   "repos": [
+    {
+     "error": null,
+     "repo": "acme/api",
+     "workflows": [
+      {
+       "file": "ci.yml",
+       "id": 21,
+       "jobs": [],
+       "name": "CI",
+       "state": "active"
+      },
+      {
+       "file": "nightly.yml",
+       "id": 22,
+       "jobs": [],
+       "name": "Nightly",
+       "state": "active"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

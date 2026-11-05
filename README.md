@@ -40,7 +40,20 @@ with the job and [a guide to explaining it](docs/AGENT_EXPLAIN.md): it reads
 the run's log or the reason cronward gave, says what happened and what you
 could do, and changes nothing without asking.
 
-**Set up with agent**, at the bottom of the popup, has it put a new workflow
+**Workflows**, at the bottom of the popup, lists the repos and workflows
+each account's token reaches, from `cronward workflows --json` on the main
+machine. A workflow that is already a job says which. Each has an agent
+button that puts that workflow on cronward with you. GitHub's own
+workflows, such as `dependabot-updates`, are left out, as nothing can start
+them. Each account has its own section, with a button to GitHub's token
+page that says which GitHub account to sign in as, and an account whose
+repos could not be listed says why without hiding the others. **Add
+account** stores a token for another GitHub account in a terminal on the
+main machine; cronward adds the account to its config itself (its `main`
+from 2026-11-05). The list asks GitHub for every repo, so it runs only when
+you open it, or press <kbd>r</kbd> there; <kbd>Esc</kbd> goes back.
+
+**Set up** (on the list, **Set up with agent**), at the bottom of the popup, has it put a new workflow
 on cronward with you, following [a setup guide](docs/AGENT_SETUP.md) and
 cronward's own skill: it finds the repo's clone, adds `workflow_dispatch:`,
 adds the job, tests it with a real run after asking, and takes out the
@@ -84,6 +97,9 @@ machine through `cronward --on <host>`.
 - **Config**: the config in your editor, in a terminal (`cronward edit`).
 - **Token**: GitHub's fine-grained token page, to give a token access to
   another repo.
+- **Workflows**: the list above (`cronward workflows --json`). Its agent
+  buttons, **Add account** (`cronward token set <name>`) and each account's
+  token page button.
 - **The key** next to a missing or expiring token: a terminal running
   `cronward token set <account>`. You type the token there; the widget never
   sees it.

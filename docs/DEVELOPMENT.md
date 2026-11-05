@@ -21,11 +21,13 @@ newest `/run/user/$UID/quickshell/by-id/*/log.log`.
 To see the states without a real cronward, `demo/run "<x>,<y> <w>x<h>"
 [STATE...]` points the widget at `demo/cronward` for a moment, captures each
 state to `demo/out/`, and puts `~/.config/omarchy/shell.json` back. The
-states are the fixture names plus `not-set-up` and `error`. With no state it
+states are the fixture names plus `not-set-up` and `error`, and for the
+workflow picker `workflows-NAME` for each `fixtures/workflows/NAME.json`,
+plus `workflows-unreachable` and `workflows-readonly`. With no state it
 writes `preview.png` from `mixed`; check that it shows only fictional names
 before committing it.
 
-Over IPC: `qs ipc call io.github.frestina.cronward open|close|toggle|refresh|check`.
+Over IPC: `qs ipc call io.github.frestina.cronward open|close|toggle|refresh|check|workflows`.
 
 ## By hand, before a release
 

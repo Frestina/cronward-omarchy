@@ -42,6 +42,14 @@ Panel {
   property bool checkStarted: false
   property bool refreshAgain: false
 
+  // The popup's page: "status", or "workflows" for the picker, which lists
+  // what `cronward workflows --json` gives, as CronwardView.picker() sorts it.
+  property string page: "status"
+  property var pickerView: null
+  property bool picking: false
+  property bool wfStarted: false
+  property int wfExitCode: 0
+
   readonly property string level: view ? view.level : "quiet"
   readonly property int count: view ? view.count : 0
   readonly property var hostProblems: view ? view.problems.filter(function(p) { return p.scope === "host" }) : []
@@ -52,6 +60,8 @@ Panel {
   property color warnColor: Color.accent
 
   readonly property string caption: {
+    if (page === "workflows")
+      return picking ? "Asking GitHub…" : "Workflows · " + (host || "this machine")
     if (checking) return "Checking…"
     if (!view) return loading ? "Reading status…" : ""
     if (view.header) return view.header
@@ -124,6 +134,37 @@ Panel {
 
   function explain(row) { run(View.agent(View.explainPrompt(row, root.host, root.pluginDir))) }
 
+  // The picker: the repos and workflows the main machine's tokens reach. It
+  // asks GitHub for every repo, so it runs only when asked, never on a timer.
+  function openWorkflows() {
+    page = "workflows"
+    if (!root.opened) root.open()
+    fetchWorkflows()
+  }
+
+  function fetchWorkflows() {
+    if (wfProc.running) return
+    picking = true
+    wfStarted = false
+    wfExitCode = 0
+    wfProc.command = View.processArgv(root.cronward, View.workflowsArgs(root.host))
+    wfProc.running = true
+  }
+
+  function finishWorkflows() {
+    picking = false
+    root.pickerView = View.picker({ started: wfStarted, exitCode: wfExitCode,
+                                    stdout: wfOut.text, stderr: wfErr.text }, root.host)
+  }
+
+  function setUpWorkflow(w) {
+    run(View.agent(View.setupWorkflowPrompt(root.host, root.pluginDir, w.repo, w.file)))
+  }
+
+  function addAccount() { run(View.terminal(View.addAccountLine(root.cronward, root.host))) }
+
+  function openTokenPage() { run("xdg-open " + View.quote(View.TOKEN_PAGE)) }
+
   // Muted text as see-through bar foreground, so it recedes on light and dark
   // themes alike.
   function dim(alpha) {
@@ -147,8 +188,8 @@ Panel {
     root.warnColor = found.orange || found.yellow || found.color3 || Color.accent
   }
 
-  onOpenedChanged: if (opened) refresh()
-  onHostChanged: refresh()
+  onOpenedChanged: if (opened) refresh(); else page = "status"
+  onHostChanged: { pickerView = null; refresh() }
   onCronwardChanged: refresh()
 
   implicitWidth: button.implicitWidth
@@ -161,6 +202,7 @@ Panel {
     function toggle(): void { root.toggle() }
     function refresh(): void { root.refreshAll() }
     function check(): void { root.checkNow() }
+    function workflows(): void { root.openWorkflows() }
   }
 
   // Both streams finish and exited fires before running drops, so finish()
@@ -182,6 +224,16 @@ Panel {
     onRunningChanged: if (!running) { root.checking = false; root.refreshAll() }
     stdout: StdioCollector { waitForEnd: true }
     stderr: StdioCollector { waitForEnd: true }
+  }
+
+  // `cronward [--on HOST] workflows --json`, run as refresh's proc is.
+  Process {
+    id: wfProc
+    onStarted: root.wfStarted = true
+    onExited: function(exitCode) { root.wfExitCode = exitCode }
+    onRunningChanged: if (!running) root.finishWorkflows()
+    stdout: StdioCollector { id: wfOut; waitForEnd: true }
+    stderr: StdioCollector { id: wfErr; waitForEnd: true }
   }
 
   FileView {
@@ -254,9 +306,14 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      onCloseRequested: root.close()
+      // Esc on the picker goes back to the status; on the status it closes.
+      onCloseRequested: if (root.page === "workflows") root.page = "status"; else root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
-      onTextKey: function(t) { if (t === "r") root.checkNow() }
+      onTextKey: function(t) {
+        if (t !== "r") return
+        if (root.page === "workflows") root.fetchWorkflows()
+        else root.checkNow()
+      }
 
       Column {
         id: content
@@ -264,9 +321,13 @@ Panel {
         anchors.right: parent.right
         anchors.top: parent.top
         spacing: Style.space(10)
+        // Everything on the picker's page but its list, which scrolls in what is left.
+        readonly property real chromeHeight: hero.implicitHeight + pickerRule.height
+          + footerRule.height + footer.implicitHeight + 4 * spacing
 
         // ---------- Hero: icon · title and the main machine · actions ----------
         RowLayout {
+          id: hero
           width: parent.width
           spacing: Style.space(12)
 
@@ -305,12 +366,32 @@ Panel {
           }
 
           PanelActionButton {
+            visible: root.page === "workflows"
+            iconText: "󰁍"
+            tooltipText: "Back to the jobs (Esc)"
+            foreground: root.barForeground
+            fontFamily: root.bar.fontFamily
+            onClicked: root.page = "status"
+          }
+
+          PanelActionButton {
+            visible: root.page === "status"
             iconText: "󰑐"
             tooltipText: root.host ? "Check now: fetch the status from " + root.host + " (r)" : "Check now (r)"
             foreground: root.barForeground
             fontFamily: root.bar.fontFamily
             enabled: !root.checking
             onClicked: root.checkNow()
+          }
+
+          PanelActionButton {
+            visible: root.page === "workflows"
+            iconText: "󰑐"
+            tooltipText: "List the workflows again (r)"
+            foreground: root.barForeground
+            fontFamily: root.bar.fontFamily
+            enabled: !root.picking
+            onClicked: root.fetchWorkflows()
           }
 
           PanelActionButton {
@@ -322,201 +403,432 @@ Panel {
           }
         }
 
-        // ---------- Not found, not set up, no jobs, or an error ----------
-        Text {
-          visible: !!root.view && root.view.message !== ""
+        // ---------- The status page: the jobs and what needs a look ----------
+        Column {
+          id: statusPage
+          visible: root.page === "status"
           width: parent.width
-          textFormat: Text.PlainText
-          text: root.view ? root.view.message : ""
-          wrapMode: Text.Wrap
-          color: root.view && root.view.kind === "error" ? Color.urgent
-            : root.view && root.view.kind === "nojobs" ? root.dim(0.7) : root.warnColor
-          font.family: root.bar.fontFamily
-          font.pixelSize: Style.font.bodySmall
-        }
+          spacing: content.spacing
 
-        // ---------- The main machine: out of reach, stopped, a failed tick ----------
-        Repeater {
-          model: root.hostProblems.concat(root.view ? root.view.notes : [])
-
-          delegate: Text {
-            required property var modelData
-            width: content.width
+          // ---------- Not found, not set up, no jobs, or an error ----------
+          Text {
+            visible: !!root.view && root.view.message !== ""
+            width: parent.width
             textFormat: Text.PlainText
-            text: "• " + modelData.text
+            text: root.view ? root.view.message : ""
             wrapMode: Text.Wrap
-            color: root.levelColor(modelData.level)
+            color: root.view && root.view.kind === "error" ? Color.urgent
+              : root.view && root.view.kind === "nojobs" ? root.dim(0.7) : root.warnColor
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.bodySmall
           }
-        }
 
-        // ---------- Tokens: none stored, or expiring ----------
-        Repeater {
-          model: root.view ? root.view.accounts : []
+          // ---------- The main machine: out of reach, stopped, a failed tick ----------
+          Repeater {
+            model: root.hostProblems.concat(root.view ? root.view.notes : [])
 
-          delegate: RowLayout {
-            id: accountRow
-            required property var modelData
-            width: content.width
-            spacing: Style.space(4)
-
-            Text {
-              Layout.fillWidth: true
+            delegate: Text {
+              required property var modelData
+              width: content.width
               textFormat: Text.PlainText
-              text: "• " + accountRow.modelData.text
+              text: "• " + modelData.text
               wrapMode: Text.Wrap
-              color: root.warnColor
+              color: root.levelColor(modelData.level)
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.bodySmall
             }
+          }
 
-            // Typed in the terminal, on the main machine; the widget never sees it.
-            PanelActionButton {
-              iconText: "󰌆"
-              tooltipText: "Store a new token for " + accountRow.modelData.name
-                + (root.host ? " on " + root.host : "") + ", in a terminal"
-              foreground: root.barForeground
-              fontFamily: root.bar.fontFamily
-              onClicked: root.inTerminal(View.onMain(root.host, ["token", "set", accountRow.modelData.name]))
+          // ---------- Tokens: none stored, or expiring ----------
+          Repeater {
+            model: root.view ? root.view.accounts : []
+
+            delegate: RowLayout {
+              id: accountRow
+              required property var modelData
+              width: content.width
+              spacing: Style.space(4)
+
+              Text {
+                Layout.fillWidth: true
+                textFormat: Text.PlainText
+                text: "• " + accountRow.modelData.text
+                wrapMode: Text.Wrap
+                color: root.warnColor
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.bodySmall
+              }
+
+              // Typed in the terminal, on the main machine; the widget never sees it.
+              PanelActionButton {
+                iconText: "󰌆"
+                tooltipText: "Store a new token for " + accountRow.modelData.name
+                  + (root.host ? " on " + root.host : "") + ", in a terminal"
+                foreground: root.barForeground
+                fontFamily: root.bar.fontFamily
+                onClicked: root.inTerminal(View.onMain(root.host, ["token", "set", accountRow.modelData.name]))
+              }
             }
           }
-        }
 
-        PanelSeparator {
-          visible: !!root.view && root.view.rows.length > 0
-          foreground: root.barForeground
-        }
+          PanelSeparator {
+            visible: !!root.view && root.view.rows.length > 0
+            foreground: root.barForeground
+          }
 
-        // ---------- One block per job ----------
-        Repeater {
-          model: root.view ? root.view.rows : []
+          // ---------- One block per job ----------
+          Repeater {
+            model: root.view ? root.view.rows : []
 
-          delegate: Rectangle {
-            id: jobRow
-            required property var modelData
-            readonly property bool linked: modelData.open !== ""
+            delegate: Rectangle {
+              id: jobRow
+              required property var modelData
+              readonly property bool linked: modelData.open !== ""
 
-            width: content.width
-            implicitHeight: jobColumn.implicitHeight + Style.space(10)
-            radius: Style.cornerRadius
-            color: rowMouse.containsMouse && linked ? root.dim(0.06) : "transparent"
+              width: content.width
+              implicitHeight: jobColumn.implicitHeight + Style.space(10)
+              radius: Style.cornerRadius
+              color: rowMouse.containsMouse && linked ? root.dim(0.06) : "transparent"
 
-            MouseArea {
-              id: rowMouse
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: jobRow.linked ? Qt.PointingHandCursor : Qt.ArrowCursor
-              onClicked: if (jobRow.linked) root.openRun(jobRow.modelData.open)
-            }
+              MouseArea {
+                id: rowMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: jobRow.linked ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: if (jobRow.linked) root.openRun(jobRow.modelData.open)
+              }
 
-            Column {
-              id: jobColumn
-              anchors.left: parent.left
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
-              anchors.leftMargin: Style.space(6)
-              anchors.rightMargin: Style.space(6)
-              spacing: Style.space(2)
+              Column {
+                id: jobColumn
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: Style.space(6)
+                anchors.rightMargin: Style.space(6)
+                spacing: Style.space(2)
 
-              RowLayout {
-                width: parent.width
-                spacing: Style.space(8)
+                RowLayout {
+                  width: parent.width
+                  spacing: Style.space(8)
 
-                Text {
-                  textFormat: Text.PlainText
-                  text: jobRow.modelData.word
-                  color: root.levelColor(jobRow.modelData.level)
-                  font.family: root.bar.fontFamily
-                  font.pixelSize: Style.font.body
-                  font.bold: jobRow.modelData.level === "bad" || jobRow.modelData.level === "warn"
+                  Text {
+                    textFormat: Text.PlainText
+                    text: jobRow.modelData.word
+                    color: root.levelColor(jobRow.modelData.level)
+                    font.family: root.bar.fontFamily
+                    font.pixelSize: Style.font.body
+                    font.bold: jobRow.modelData.level === "bad" || jobRow.modelData.level === "warn"
+                  }
+
+                  Text {
+                    Layout.fillWidth: true
+                    textFormat: Text.PlainText
+                    text: jobRow.modelData.name
+                    color: root.barForeground
+                    font.family: root.bar.fontFamily
+                    font.pixelSize: Style.font.body
+                    font.bold: true
+                    elide: Text.ElideRight
+                  }
+
+                  Text {
+                    textFormat: Text.PlainText
+                    text: jobRow.modelData.next
+                    color: root.dim(0.6)
+                    font.family: root.bar.fontFamily
+                    font.pixelSize: Style.font.caption
+                  }
+
+                  PanelActionButton {
+                    visible: jobRow.modelData.ask
+                    iconText: "󰚩"
+                    tooltipText: "Ask your agent why " + jobRow.modelData.name + " "
+                      + (jobRow.modelData.kind === "failed" ? "failed" : "didn't run")
+                    size: Style.space(18)
+                    fontSize: Style.font.caption
+                    foreground: root.barForeground
+                    fontFamily: root.bar.fontFamily
+                    onClicked: root.explain(jobRow.modelData)
+                  }
                 }
 
                 Text {
-                  Layout.fillWidth: true
+                  width: parent.width
                   textFormat: Text.PlainText
-                  text: jobRow.modelData.name
-                  color: root.barForeground
+                  text: jobRow.modelData.where + (jobRow.modelData.ran ? " · " + jobRow.modelData.ran : "")
+                  color: root.dim(0.6)
                   font.family: root.bar.fontFamily
-                  font.pixelSize: Style.font.body
-                  font.bold: true
+                  font.pixelSize: Style.font.caption
                   elide: Text.ElideRight
                 }
 
                 Text {
+                  visible: jobRow.modelData.reason !== ""
+                  width: parent.width
                   textFormat: Text.PlainText
-                  text: jobRow.modelData.next
-                  color: root.dim(0.6)
+                  text: jobRow.modelData.reason
+                  wrapMode: Text.Wrap
+                  color: root.levelColor(jobRow.modelData.level)
                   font.family: root.bar.fontFamily
                   font.pixelSize: Style.font.caption
                 }
 
-                PanelActionButton {
-                  visible: jobRow.modelData.ask
-                  iconText: "󰚩"
-                  tooltipText: "Ask your agent why " + jobRow.modelData.name + " "
-                    + (jobRow.modelData.kind === "failed" ? "failed" : "didn't run")
-                  size: Style.space(18)
-                  fontSize: Style.font.caption
-                  foreground: root.barForeground
-                  fontFamily: root.bar.fontFamily
-                  onClicked: root.explain(jobRow.modelData)
+                Text {
+                  visible: jobRow.modelData.running !== ""
+                  width: parent.width
+                  textFormat: Text.PlainText
+                  text: "󰐊 " + jobRow.modelData.running
+                  color: root.barForeground
+                  font.family: root.bar.fontFamily
+                  font.pixelSize: Style.font.caption
                 }
               }
+            }
+          }
 
-              Text {
-                width: parent.width
-                textFormat: Text.PlainText
-                text: jobRow.modelData.where + (jobRow.modelData.ran ? " · " + jobRow.modelData.ran : "")
-                color: root.dim(0.6)
-                font.family: root.bar.fontFamily
-                font.pixelSize: Style.font.caption
-                elide: Text.ElideRight
-              }
+          Text {
+            visible: !!root.view && root.view.rows.some(function(r) { return r.open !== "" })
+            width: parent.width
+            textFormat: Text.PlainText
+            text: "Click a job to open its run on GitHub"
+            horizontalAlignment: Text.AlignHCenter
+            color: root.dim(0.45)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+        }
 
-              Text {
-                visible: jobRow.modelData.reason !== ""
-                width: parent.width
-                textFormat: Text.PlainText
-                text: jobRow.modelData.reason
-                wrapMode: Text.Wrap
-                color: root.levelColor(jobRow.modelData.level)
-                font.family: root.bar.fontFamily
-                font.pixelSize: Style.font.caption
-              }
+        // ---------- The picker: each account's repos and workflows ----------
+        PanelSeparator {
+          id: pickerRule
+          visible: root.page === "workflows"
+          foreground: root.barForeground
+        }
 
-              Text {
-                visible: jobRow.modelData.running !== ""
-                width: parent.width
-                textFormat: Text.PlainText
-                text: "󰐊 " + jobRow.modelData.running
-                color: root.barForeground
-                font.family: root.bar.fontFamily
-                font.pixelSize: Style.font.caption
+        Flickable {
+          id: flick
+          visible: root.page === "workflows"
+          width: parent.width
+          height: Math.min(pickerList.implicitHeight, Math.max(Style.space(120),
+            panel.availableCardHeight - panel.verticalContentInset - content.chromeHeight))
+          contentHeight: pickerList.implicitHeight
+          clip: true
+          boundsBehavior: Flickable.StopAtBounds
+
+          Column {
+            id: pickerList
+            width: flick.width
+            spacing: Style.space(10)
+
+            // Before the first answer, while asking, or what went wrong.
+            Text {
+              readonly property string said: !root.pickerView
+                ? (root.picking ? "Asking GitHub, through " + (root.host || "cronward") + ", for the repos the tokens reach…" : "")
+                : root.pickerView.message
+              visible: said !== ""
+              width: parent.width
+              textFormat: Text.PlainText
+              text: said
+              wrapMode: Text.Wrap
+              color: !root.pickerView || root.pickerView.kind === "list" ? root.dim(0.7)
+                : root.pickerView.kind === "error" || root.pickerView.kind === "missing" ? Color.urgent
+                : root.warnColor
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.bodySmall
+            }
+
+            Repeater {
+              model: root.pickerView ? root.pickerView.accounts : []
+
+              delegate: Column {
+                id: account
+                required property var modelData
+                width: pickerList.width
+                spacing: Style.space(6)
+
+                RowLayout {
+                  width: parent.width
+                  spacing: Style.space(4)
+
+                  PanelSectionHeader {
+                    Layout.fillWidth: true
+                    text: (account.modelData.name + (account.modelData.owner
+                      && account.modelData.owner.toLowerCase() !== account.modelData.name.toLowerCase()
+                      ? " · " + account.modelData.owner + " on GitHub" : "")).toUpperCase()
+                    foreground: root.barForeground
+                    fontFamily: root.bar.fontFamily
+                    elide: Text.ElideRight
+                  }
+
+                  // Typed in the terminal, on the main machine; the widget never sees it.
+                  PanelActionButton {
+                    visible: account.modelData.error !== ""
+                    iconText: "󰌆"
+                    tooltipText: "Store a new token for " + account.modelData.name
+                      + (root.host ? " on " + root.host : "") + ", in a terminal"
+                    size: Style.space(18)
+                    fontSize: Style.font.caption
+                    foreground: root.barForeground
+                    fontFamily: root.bar.fontFamily
+                    onClicked: root.inTerminal(View.onMain(root.host, ["token", "set", account.modelData.name]))
+                  }
+
+                  PanelActionButton {
+                    iconText: "󰖟"
+                    tooltipText: account.modelData.tokenTip
+                    size: Style.space(18)
+                    fontSize: Style.font.caption
+                    foreground: root.barForeground
+                    fontFamily: root.bar.fontFamily
+                    onClicked: root.openTokenPage()
+                  }
+                }
+
+                Text {
+                  visible: account.modelData.error !== "" || account.modelData.empty
+                  width: parent.width
+                  textFormat: Text.PlainText
+                  text: account.modelData.error !== "" ? account.modelData.error
+                    : "The token for " + account.modelData.name + " reaches no repos yet: give it access on GitHub's token page."
+                  wrapMode: Text.Wrap
+                  color: root.warnColor
+                  font.family: root.bar.fontFamily
+                  font.pixelSize: Style.font.caption
+                }
+
+                Repeater {
+                  model: account.modelData.repos
+
+                  delegate: Column {
+                    id: repoBlock
+                    required property var modelData
+                    width: account.width
+                    spacing: Style.space(2)
+
+                    Text {
+                      width: parent.width
+                      textFormat: Text.PlainText
+                      text: repoBlock.modelData.repo
+                      color: root.barForeground
+                      font.family: root.bar.fontFamily
+                      font.pixelSize: Style.font.body
+                      font.bold: true
+                      elide: Text.ElideRight
+                    }
+
+                    Text {
+                      visible: repoBlock.modelData.error !== ""
+                      width: parent.width
+                      textFormat: Text.PlainText
+                      text: repoBlock.modelData.error
+                      wrapMode: Text.Wrap
+                      color: root.warnColor
+                      font.family: root.bar.fontFamily
+                      font.pixelSize: Style.font.caption
+                    }
+
+                    Repeater {
+                      model: repoBlock.modelData.workflows
+
+                      delegate: RowLayout {
+                        id: flow
+                        required property var modelData
+                        width: repoBlock.width
+                        spacing: Style.space(8)
+
+                        Column {
+                          Layout.fillWidth: true
+                          Layout.leftMargin: Style.space(8)
+                          spacing: 0
+
+                          Text {
+                            width: parent.width
+                            textFormat: Text.PlainText
+                            text: flow.modelData.file
+                            color: root.barForeground
+                            font.family: root.bar.fontFamily
+                            font.pixelSize: Style.font.bodySmall
+                            elide: Text.ElideRight
+                          }
+
+                          Text {
+                            width: parent.width
+                            textFormat: Text.PlainText
+                            text: [flow.modelData.name, flow.modelData.state, flow.modelData.job]
+                              .filter(function(t) { return t !== "" }).join(" · ")
+                            color: flow.modelData.job !== "" ? root.barForeground
+                              : flow.modelData.state !== "" ? root.warnColor : root.dim(0.6)
+                            font.family: root.bar.fontFamily
+                            font.pixelSize: Style.font.caption
+                            elide: Text.ElideRight
+                          }
+                        }
+
+                        PanelActionButton {
+                          iconText: "󰚩"
+                          tooltipText: flow.modelData.jobs.length > 0
+                            ? "Give " + flow.modelData.file + " another schedule, with your agent"
+                            : "Put " + flow.modelData.file + " on cronward, with your agent"
+                          size: Style.space(18)
+                          fontSize: Style.font.caption
+                          foreground: root.barForeground
+                          fontFamily: root.bar.fontFamily
+                          onClicked: root.setUpWorkflow(flow.modelData)
+                        }
+                      }
+                    }
+                  }
+                }
+
+                Text {
+                  visible: account.modelData.bare.length > 0
+                  width: parent.width
+                  textFormat: Text.PlainText
+                  text: "No workflows: " + account.modelData.bare.join(", ")
+                  wrapMode: Text.Wrap
+                  color: root.dim(0.5)
+                  font.family: root.bar.fontFamily
+                  font.pixelSize: Style.font.caption
+                }
+
+                Text {
+                  visible: account.modelData.github.length > 0
+                  width: parent.width
+                  textFormat: Text.PlainText
+                  text: "Left out, as GitHub runs them itself: " + account.modelData.github.join(", ")
+                  wrapMode: Text.Wrap
+                  color: root.dim(0.5)
+                  font.family: root.bar.fontFamily
+                  font.pixelSize: Style.font.caption
+                }
               }
+            }
+
+            Text {
+              visible: !!root.pickerView && root.pickerView.kind === "list"
+              width: parent.width
+              textFormat: Text.PlainText
+              text: "Repos from another GitHub account need a token of their own: Add account."
+              wrapMode: Text.Wrap
+              color: root.dim(0.45)
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.caption
             }
           }
         }
 
-        Text {
-          visible: !!root.view && root.view.rows.some(function(r) { return r.open !== "" })
-          width: parent.width
-          textFormat: Text.PlainText
-          text: "Click a job to open its run on GitHub"
-          horizontalAlignment: Text.AlignHCenter
-          color: root.dim(0.45)
-          font.family: root.bar.fontFamily
-          font.pixelSize: Style.font.caption
-        }
+        PanelSeparator { id: footerRule; foreground: root.barForeground }
 
-        PanelSeparator { foreground: root.barForeground }
-
-        // ---------- Footer: the config and the token · a new job with the agent ----------
+        // ---------- Footer ----------
+        // Jobs: the config and the token · the picker and a new job with the agent.
+        // Picker: a new account and the token · a new job with the agent.
         RowLayout {
+          id: footer
           width: parent.width
           spacing: Style.space(4)
 
           Button {
+            visible: root.page === "status"
             iconText: "󰏫"
             text: "Config"
             tooltipText: root.host ? "Edit the config on " + root.host + ", in a terminal" : "Edit the config, in a terminal"
@@ -527,20 +839,43 @@ Panel {
           }
 
           Button {
+            visible: root.page === "workflows"
+            iconText: "󰀔"
+            text: "Add account"
+            tooltipText: "Store a token for another GitHub account" + (root.host ? " on " + root.host : "")
+              + ", in a terminal: make it on GitHub's token page first, signed in as that account"
+            foreground: root.barForeground
+            fontFamily: root.bar.fontFamily
+            fontSize: Style.font.bodySmall
+            onClicked: root.addAccount()
+          }
+
+          Button {
             iconText: "󰖟"
             text: "Token"
             tooltipText: "Give a token access to a repo, on GitHub's token page"
             foreground: root.barForeground
             fontFamily: root.bar.fontFamily
             fontSize: Style.font.bodySmall
-            onClicked: root.run("xdg-open " + View.quote(View.TOKEN_PAGE))
+            onClicked: root.openTokenPage()
           }
 
           Item { Layout.fillWidth: true }
 
           Button {
+            visible: root.page === "status"
+            iconText: "󰉹"
+            text: "Workflows"
+            tooltipText: "The repos and workflows the tokens reach, to put one on cronward"
+            foreground: root.barForeground
+            fontFamily: root.bar.fontFamily
+            fontSize: Style.font.bodySmall
+            onClicked: root.openWorkflows()
+          }
+
+          Button {
             iconText: "󰚩"
-            text: "Set up with agent"
+            text: root.page === "status" ? "Set up" : "Set up with agent"
             tooltipText: "Your default coding agent puts a workflow on cronward with you"
             foreground: root.barForeground
             fontFamily: root.bar.fontFamily

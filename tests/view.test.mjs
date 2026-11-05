@@ -164,6 +164,7 @@ test("a disabled job's old failure is no problem, as in cronward's exit code", (
 test("every fixture state looks distinct", () => {
   const seen = new Map()
   for (const f of fs.readdirSync(new URL("../demo/fixtures/", import.meta.url))) {
+    if (!f.endsWith(".json")) continue // workflows/: the picker's, in picker.test.mjs
     const name = f.replace(/\.json$/, "")
     const host = /viewer|unreachable|offline|mixed/.test(name) ? "homeserver" : ""
     const m = show(name, host)
