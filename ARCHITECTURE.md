@@ -67,7 +67,12 @@ own. Every change is a cronward command.
   when it opens or on <kbd>r</kbd>, never on the timer, since it asks
   GitHub for every repo. Its list scrolls in a `Flickable` capped to the
   screen's room, as the shell's own panels do. <kbd>Esc</kbd> goes back to
-  the jobs; closing the popup always returns to them.
+  the jobs; closing the popup always returns to them. Repos start folded
+  and accounts open; which are toggled is kept by name (`openRepos`,
+  `closedAccounts`), so listing again keeps them. `picker()` gives each
+  repo and account a `summary` and an `onCronward` count for the folded
+  headers. "On cronward" is the theme's `green`, else `color2`, else the
+  accent.
 - `BarIconButton`: `active` unless quiet, `activeColor` urgent for `bad`
   and the theme's orange for `warn`, `dimmed` when every job passed and
   nothing is running. Vertical bars show only the icon.

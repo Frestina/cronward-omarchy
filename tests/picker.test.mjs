@@ -40,6 +40,17 @@ test("a workflow that is already a job says which", () => {
   assert.deepEqual(widget.workflows[0].jobs, ["nightly"])
 })
 
+test("collapsed headers: each repo's and account's count, and how many are on cronward", () => {
+  const [personal, work] = pick("list").accounts
+  assert.deepEqual(personal.repos.map(r => [r.summary, r.onCronward]),
+    [["1 workflow", 1], ["3 workflows", 1]])
+  assert.deepEqual([personal.summary, personal.onCronward], ["2 repos · 2 on cronward", 2])
+  assert.equal(work.summary, "1 repo")
+  const broken = pick("repo-error").accounts[0].repos[1]
+  assert.deepEqual([broken.summary, broken.onCronward], ["cannot list its workflows", 0])
+  assert.equal(pick("account-error", 2).accounts[1].summary, "")
+})
+
 test("a workflow turned off says so", () => {
   const widget = pick("list").accounts[0].repos[1]
   assert.deepEqual(widget.workflows.map(w => w.state), ["", "turned off in GitHub", ""])

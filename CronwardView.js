@@ -163,10 +163,20 @@ function pickerAccount(a) {
                state: state in STATES ? STATES[state] : state,
                job: jobs.length ? "on cronward: " + jobs.join(", ") : "" }
     })
-    if (r.error) out.repos.push({ repo: String(r.repo), error: String(r.error), workflows: own })
-    else if (own.length) out.repos.push({ repo: String(r.repo), error: "", workflows: own })
+    // A repo's header, collapsed: how many workflows, and how many are jobs.
+    var jobs = own.filter(function(w) { return w.jobs.length > 0 }).length
+    var entry = { repo: String(r.repo), error: r.error ? String(r.error) : "", workflows: own,
+                  onCronward: jobs,
+                  summary: r.error ? "cannot list its workflows"
+                    : own.length + (own.length === 1 ? " workflow" : " workflows") }
+    if (r.error || own.length) out.repos.push(entry)
     else out.bare.push(String(r.repo))
   })
+  var listed = out.repos.length
+  var onCronward = out.repos.reduce(function(n, r) { return n + r.onCronward }, 0)
+  out.onCronward = onCronward
+  out.summary = out.error ? "" : listed + (listed === 1 ? " repo" : " repos")
+    + (onCronward ? " · " + onCronward + " on cronward" : "")
   out.tokenTip = "Give the token for " + out.name + " access to more repos, on GitHub's token page"
     + (out.owner ? ". Sign in to GitHub as " + out.owner + " first" : "")
   return out

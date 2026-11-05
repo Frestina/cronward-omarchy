@@ -49,6 +49,18 @@ Panel {
   property bool picking: false
   property bool wfStarted: false
   property int wfExitCode: 0
+  // Which picker sections are toggled: repos start collapsed, accounts open.
+  // Kept by name, so listing again keeps them as they were.
+  property var openRepos: ({})
+  property var closedAccounts: ({})
+
+  function toggled(map, key) {
+    var next = {}
+    for (var k in map) next[k] = map[k]
+    if (next[key]) delete next[key]
+    else next[key] = true
+    return next
+  }
 
   readonly property string level: view ? view.level : "quiet"
   readonly property int count: view ? view.count : 0
@@ -58,6 +70,8 @@ Panel {
   // Warnings in the theme's orange (or yellow), which the shell's palette
   // lacks; its accent can be any hue, red included.
   property color warnColor: Color.accent
+  // "On cronward" in the theme's green, else color2, else the accent.
+  property color okColor: Color.accent
 
   readonly property string caption: {
     if (page === "workflows")
@@ -186,6 +200,7 @@ Panel {
       if (match) found[match[1]] = match[2]
     })
     root.warnColor = found.orange || found.yellow || found.color3 || Color.accent
+    root.okColor = found.green || found.color2 || Color.accent
   }
 
   onOpenedChanged: if (opened) refresh(); else page = "status"
@@ -643,44 +658,75 @@ Panel {
               delegate: Column {
                 id: account
                 required property var modelData
+                readonly property bool open: !root.closedAccounts[modelData.name]
                 width: pickerList.width
-                spacing: Style.space(6)
+                spacing: Style.space(8)
 
-                RowLayout {
+                // The account's header: click to fold its repos away.
+                Item {
                   width: parent.width
-                  spacing: Style.space(4)
+                  implicitHeight: accountHead.implicitHeight
 
-                  PanelSectionHeader {
-                    Layout.fillWidth: true
-                    text: (account.modelData.name + (account.modelData.owner
-                      && account.modelData.owner.toLowerCase() !== account.modelData.name.toLowerCase()
-                      ? " · " + account.modelData.owner + " on GitHub" : "")).toUpperCase()
-                    foreground: root.barForeground
-                    fontFamily: root.bar.fontFamily
-                    elide: Text.ElideRight
+                  MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.closedAccounts = root.toggled(root.closedAccounts, account.modelData.name)
                   }
 
-                  // Typed in the terminal, on the main machine; the widget never sees it.
-                  PanelActionButton {
-                    visible: account.modelData.error !== ""
-                    iconText: "󰌆"
-                    tooltipText: "Store a new token for " + account.modelData.name
-                      + (root.host ? " on " + root.host : "") + ", in a terminal"
-                    size: Style.space(18)
-                    fontSize: Style.font.caption
-                    foreground: root.barForeground
-                    fontFamily: root.bar.fontFamily
-                    onClicked: root.inTerminal(View.onMain(root.host, ["token", "set", account.modelData.name]))
-                  }
+                  RowLayout {
+                    id: accountHead
+                    width: parent.width
+                    spacing: Style.space(4)
 
-                  PanelActionButton {
-                    iconText: "󰖟"
-                    tooltipText: account.modelData.tokenTip
-                    size: Style.space(18)
-                    fontSize: Style.font.caption
-                    foreground: root.barForeground
-                    fontFamily: root.bar.fontFamily
-                    onClicked: root.openTokenPage()
+                    PanelSectionHeader {
+                      Layout.fillWidth: true
+                      text: (account.modelData.name + (account.modelData.owner
+                        && account.modelData.owner.toLowerCase() !== account.modelData.name.toLowerCase()
+                        ? " · " + account.modelData.owner + " on GitHub" : "")).toUpperCase()
+                      foreground: root.barForeground
+                      fontFamily: root.bar.fontFamily
+                      elide: Text.ElideRight
+                    }
+
+                    Text {
+                      visible: !account.open && account.modelData.summary !== ""
+                      textFormat: Text.PlainText
+                      text: account.modelData.summary
+                      color: root.dim(0.55)
+                      font.family: root.bar.fontFamily
+                      font.pixelSize: Style.font.caption
+                    }
+
+                    // Typed in the terminal, on the main machine; the widget never sees it.
+                    PanelActionButton {
+                      visible: account.modelData.error !== ""
+                      iconText: "󰌆"
+                      tooltipText: "Store a new token for " + account.modelData.name
+                        + (root.host ? " on " + root.host : "") + ", in a terminal"
+                      size: Style.space(18)
+                      fontSize: Style.font.caption
+                      foreground: root.barForeground
+                      fontFamily: root.bar.fontFamily
+                      onClicked: root.inTerminal(View.onMain(root.host, ["token", "set", account.modelData.name]))
+                    }
+
+                    PanelActionButton {
+                      iconText: "󰖟"
+                      tooltipText: account.modelData.tokenTip
+                      size: Style.space(18)
+                      fontSize: Style.font.caption
+                      foreground: root.barForeground
+                      fontFamily: root.bar.fontFamily
+                      onClicked: root.openTokenPage()
+                    }
+
+                    Text {
+                      textFormat: Text.PlainText
+                      text: account.open ? "󰅀" : "󰅂"
+                      color: root.dim(0.7)
+                      font.family: root.bar.fontFamily
+                      font.pixelSize: Style.font.body
+                    }
                   }
                 }
 
@@ -696,84 +742,180 @@ Panel {
                   font.pixelSize: Style.font.caption
                 }
 
+                // ---------- One card per repo: its header folds its workflows ----------
                 Repeater {
-                  model: account.modelData.repos
+                  model: account.open ? account.modelData.repos : []
 
-                  delegate: Column {
+                  delegate: Rectangle {
                     id: repoBlock
                     required property var modelData
+                    readonly property bool open: !!root.openRepos[account.modelData.name + "/" + modelData.repo]
+
                     width: account.width
-                    spacing: Style.space(2)
+                    implicitHeight: repoColumn.implicitHeight + Style.space(16)
+                    radius: Style.cornerRadius
+                    color: repoMouse.containsMouse && !open ? root.dim(0.08) : root.dim(0.04)
+                    border.width: 1
+                    border.color: root.dim(0.12)
 
-                    Text {
-                      width: parent.width
-                      textFormat: Text.PlainText
-                      text: repoBlock.modelData.repo
-                      color: root.barForeground
-                      font.family: root.bar.fontFamily
-                      font.pixelSize: Style.font.body
-                      font.bold: true
-                      elide: Text.ElideRight
-                    }
+                    Column {
+                      id: repoColumn
+                      anchors.left: parent.left
+                      anchors.right: parent.right
+                      anchors.top: parent.top
+                      anchors.margins: Style.space(8)
+                      spacing: Style.space(8)
 
-                    Text {
-                      visible: repoBlock.modelData.error !== ""
-                      width: parent.width
-                      textFormat: Text.PlainText
-                      text: repoBlock.modelData.error
-                      wrapMode: Text.Wrap
-                      color: root.warnColor
-                      font.family: root.bar.fontFamily
-                      font.pixelSize: Style.font.caption
-                    }
+                      Item {
+                        width: parent.width
+                        implicitHeight: repoHead.implicitHeight
 
-                    Repeater {
-                      model: repoBlock.modelData.workflows
-
-                      delegate: RowLayout {
-                        id: flow
-                        required property var modelData
-                        width: repoBlock.width
-                        spacing: Style.space(8)
-
-                        Column {
-                          Layout.fillWidth: true
-                          Layout.leftMargin: Style.space(8)
-                          spacing: 0
-
-                          Text {
-                            width: parent.width
-                            textFormat: Text.PlainText
-                            text: flow.modelData.file
-                            color: root.barForeground
-                            font.family: root.bar.fontFamily
-                            font.pixelSize: Style.font.bodySmall
-                            elide: Text.ElideRight
-                          }
-
-                          Text {
-                            width: parent.width
-                            textFormat: Text.PlainText
-                            text: [flow.modelData.name, flow.modelData.state, flow.modelData.job]
-                              .filter(function(t) { return t !== "" }).join(" · ")
-                            color: flow.modelData.job !== "" ? root.barForeground
-                              : flow.modelData.state !== "" ? root.warnColor : root.dim(0.6)
-                            font.family: root.bar.fontFamily
-                            font.pixelSize: Style.font.caption
-                            elide: Text.ElideRight
-                          }
+                        MouseArea {
+                          id: repoMouse
+                          anchors.fill: parent
+                          hoverEnabled: true
+                          cursorShape: Qt.PointingHandCursor
+                          onClicked: root.openRepos = root.toggled(root.openRepos,
+                            account.modelData.name + "/" + repoBlock.modelData.repo)
                         }
 
-                        PanelActionButton {
-                          iconText: "󰚩"
-                          tooltipText: flow.modelData.jobs.length > 0
-                            ? "Give " + flow.modelData.file + " another schedule, with your agent"
-                            : "Put " + flow.modelData.file + " on cronward, with your agent"
-                          size: Style.space(18)
-                          fontSize: Style.font.caption
-                          foreground: root.barForeground
-                          fontFamily: root.bar.fontFamily
-                          onClicked: root.setUpWorkflow(flow.modelData)
+                        RowLayout {
+                          id: repoHead
+                          width: parent.width
+                          spacing: Style.space(8)
+
+                          Text {
+                            Layout.fillWidth: true
+                            textFormat: Text.PlainText
+                            text: repoBlock.modelData.repo
+                            color: root.barForeground
+                            font.family: root.bar.fontFamily
+                            font.pixelSize: Style.font.body
+                            font.bold: true
+                            elide: Text.ElideRight
+                          }
+
+                          // Seen without opening the repo: some of it is on cronward.
+                          Rectangle {
+                            visible: repoBlock.modelData.onCronward > 0
+                            implicitWidth: repoBadge.implicitWidth + Style.space(12)
+                            implicitHeight: repoBadge.implicitHeight + Style.space(4)
+                            radius: height / 2
+                            color: Qt.rgba(root.okColor.r, root.okColor.g, root.okColor.b, 0.18)
+
+                            Text {
+                              id: repoBadge
+                              anchors.centerIn: parent
+                              textFormat: Text.PlainText
+                              text: "󰄬 " + repoBlock.modelData.onCronward + " on cronward"
+                              color: root.okColor
+                              font.family: root.bar.fontFamily
+                              font.pixelSize: Style.font.caption
+                              font.bold: true
+                            }
+                          }
+
+                          Text {
+                            textFormat: Text.PlainText
+                            text: repoBlock.modelData.summary
+                            color: repoBlock.modelData.error !== "" ? root.warnColor : root.dim(0.55)
+                            font.family: root.bar.fontFamily
+                            font.pixelSize: Style.font.caption
+                          }
+
+                          Text {
+                            textFormat: Text.PlainText
+                            text: repoBlock.open ? "󰅀" : "󰅂"
+                            color: root.dim(0.7)
+                            font.family: root.bar.fontFamily
+                            font.pixelSize: Style.font.body
+                          }
+                        }
+                      }
+
+                      Text {
+                        visible: repoBlock.open && repoBlock.modelData.error !== ""
+                        width: parent.width
+                        textFormat: Text.PlainText
+                        text: repoBlock.modelData.error
+                        wrapMode: Text.Wrap
+                        color: root.warnColor
+                        font.family: root.bar.fontFamily
+                        font.pixelSize: Style.font.caption
+                      }
+
+                      Repeater {
+                        model: repoBlock.open ? repoBlock.modelData.workflows : []
+
+                        delegate: RowLayout {
+                          id: flow
+                          required property var modelData
+                          width: repoColumn.width
+                          spacing: Style.space(8)
+
+                          Column {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: Style.space(8)
+                            spacing: Style.space(3)
+
+                            RowLayout {
+                              width: parent.width
+                              spacing: Style.space(8)
+
+                              Text {
+                                textFormat: Text.PlainText
+                                text: flow.modelData.file
+                                color: root.barForeground
+                                font.family: root.bar.fontFamily
+                                font.pixelSize: Style.font.bodySmall
+                              }
+
+                              Text {
+                                Layout.fillWidth: true
+                                textFormat: Text.PlainText
+                                text: [flow.modelData.name, flow.modelData.state]
+                                  .filter(function(t) { return t !== "" }).join(" · ")
+                                color: flow.modelData.state !== "" ? root.warnColor : root.dim(0.55)
+                                font.family: root.bar.fontFamily
+                                font.pixelSize: Style.font.caption
+                                elide: Text.ElideRight
+                              }
+                            }
+
+                            // Already a job: a green pill naming it.
+                            Rectangle {
+                              visible: flow.modelData.job !== ""
+                              implicitWidth: Math.min(parent.width, jobBadge.implicitWidth + Style.space(12))
+                              implicitHeight: jobBadge.implicitHeight + Style.space(4)
+                              radius: height / 2
+                              color: Qt.rgba(root.okColor.r, root.okColor.g, root.okColor.b, 0.18)
+
+                              Text {
+                                id: jobBadge
+                                anchors.centerIn: parent
+                                width: Math.min(implicitWidth, parent.width - Style.space(12))
+                                textFormat: Text.PlainText
+                                text: "󰄬 " + flow.modelData.job
+                                color: root.okColor
+                                font.family: root.bar.fontFamily
+                                font.pixelSize: Style.font.caption
+                                font.bold: true
+                                elide: Text.ElideRight
+                              }
+                            }
+                          }
+
+                          PanelActionButton {
+                            iconText: "󰚩"
+                            tooltipText: flow.modelData.jobs.length > 0
+                              ? "Give " + flow.modelData.file + " another schedule, with your agent"
+                              : "Put " + flow.modelData.file + " on cronward, with your agent"
+                            size: Style.space(18)
+                            fontSize: Style.font.caption
+                            foreground: root.barForeground
+                            fontFamily: root.bar.fontFamily
+                            onClicked: root.setUpWorkflow(flow.modelData)
+                          }
                         }
                       }
                     }
@@ -781,7 +923,7 @@ Panel {
                 }
 
                 Text {
-                  visible: account.modelData.bare.length > 0
+                  visible: account.open && account.modelData.bare.length > 0
                   width: parent.width
                   textFormat: Text.PlainText
                   text: "No workflows: " + account.modelData.bare.join(", ")
@@ -792,7 +934,7 @@ Panel {
                 }
 
                 Text {
-                  visible: account.modelData.github.length > 0
+                  visible: account.open && account.modelData.github.length > 0
                   width: parent.width
                   textFormat: Text.PlainText
                   text: "Left out, as GitHub runs them itself: " + account.modelData.github.join(", ")
