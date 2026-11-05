@@ -16,7 +16,8 @@ own results, so a slot that was missed, refused or never finished shows as
 didn't run, never as fine. It holds no token and makes no network calls of
 its own: on the machine that runs cronward it reads `cronward status`, and
 on a laptop it reads the status that cronward's viewer last fetched from
-that machine.
+that machine. Private repos work the same, and on a laptop the access to
+them stays with cronward's token on the main machine.
 
 - **The bar icon** is dim while every job's latest result passed and the
   main machine is ticking. It turns red with a count when a job failed, and

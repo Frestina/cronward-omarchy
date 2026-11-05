@@ -1,24 +1,31 @@
 {
-  "status": "partial",
-  "input_commit": null,
-  "date": "2026-11-04",
-  "platform": "Arch Linux, Omarchy 4.0.6-1, Hyprland 0.56.2, Quickshell 0.3.2, one 2560x1600 monitor at scale 2, horizontal bar",
-  "omarchy_version": "4.0.6-1",
+  "status": "passed",
+  "input_commit": "850f1895f8934e8f45982dd464acdec370f367f6",
+  "date": "2026-11-05",
+  "platform": "Arch Linux, Omarchy 4.5.0-3, Hyprland 0.56.2, Quickshell 0.3.2 (r7), one 2560x1600 monitor at scale 2, horizontal bar. cronward from its main branch of 2026-11-04 (reports 0.1.0) on the viewer and the main machine.",
+  "omarchy_version": "4.5.0-3",
   "commands": [
     "./tests/run",
     "omarchy plugin validate <checkout>",
-    "omarchy plugin enable io.github.frestina.cronward, with host set to the main machine on a viewer laptop",
-    "qs ipc call io.github.frestina.cronward open|check|close",
-    "demo/run with every state"
+    "omarchy plugin enable io.github.frestina.cronward, linked from the checkout, with host set to the main machine on a viewer laptop",
+    "omarchy restart shell, after each change to Cronward.qml",
+    "Set up with agent, Ask agent, Config, Token, a row's link and Check now, clicked by hand in the installed widget",
+    "demo/run \"600,0 680x440\" token-expiring no-token"
   ],
   "results": [
-    "Portable checks and the Omarchy validator pass.",
-    "On a viewer of a real main machine, the bar shows its one passed job dimmed, and the popup its result, next slot and 'as of' time.",
-    "Check now over IPC ran cronward watch and moved 'as of' forward.",
-    "Every fixture state, plus not set up and error, rendered distinct in the installed widget (demo/run)."
+    "Portable checks (26 tests) and the Omarchy validator pass.",
+    "Set up with agent: the agent listed the repos the token reaches, put a private test repo's workflow on cronward through cronward --on, and its test run passed. The row appeared in the widget, and its link opened the run on GitHub.",
+    "The job's next hourly slot ran on schedule and passed, in the widget.",
+    "Ask agent, on a run made to fail on purpose: the agent found the cause from the commit and the run times, said it did not matter, and changed nothing without asking.",
+    "Config opened the main machine's config in an editor, in a terminal. Token opened GitHub's token page.",
+    "Omarchy 4.5.0 bar: the count shows beside the glyph at full size, in red (failed) and orange (didn't run, a token), after the fix in 1afb3db.",
+    "The account key button shows beside a missing or expiring token (demo/run, fictional data). Not clicked: it would run token set on the fictional host.",
+    "On 2026-11-04, on Omarchy 4.0.6: Check now over IPC ran cronward watch and moved 'as of' forward, and every fixture state, plus not set up and error, rendered distinct (demo/run)."
   ],
   "limitations": [
-    "Not yet tried: a vertical bar, a theme switch, several monitors, and clicking each button by hand (Config, token key, Set up with agent, Ask agent, a row's link).",
+    "Not yet tried: a vertical bar, a theme switch, several monitors, and the running mark in the bar on Omarchy 4.5.0.",
+    "The account key button was seen, not clicked, against a real missing or expiring token.",
+    "The pre-4.5.0 path of the bar count (text, without labelText) was not run again after the fix; it is the same code as before the fix.",
     "Not yet tried on the main machine itself (host blank) with a real cronward."
   ]
 }
