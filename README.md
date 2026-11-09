@@ -123,9 +123,25 @@ ask before a test run or a push.
 omarchy plugin add https://github.com/Frestina/cronward-omarchy --enable
 ```
 
-On a laptop, set the widget's **Main machine** to the main machine, as you
-would type it after `ssh` (the same as for `cronward install --viewer`).
-Leave it blank on the machine that runs cronward.
+On the machine that runs cronward, that is all: leave **Main machine**
+blank.
+
+On a laptop, cronward comes first: install it there as a viewer of the main
+machine (`cronward install --viewer homeserver`, see Requirements). The
+widget shows jobs only once that viewer has fetched a status. Then set the
+widget's **Main machine** to the same name, as you would type it after
+`ssh`:
+
+```bash
+omarchy bar set io.github.frestina.cronward host homeserver
+```
+
+That saves `"host": "homeserver"` in the widget's entry in
+`~/.config/omarchy/shell.json`, and the widget reads the status again at
+once. The viewer fetches hourly at :08, so until its first fetch the widget
+says there is no status from `homeserver` yet; **Check now** (middle-click)
+fetches one at once. To go back to blank:
+`omarchy bar set io.github.frestina.cronward host ""`.
 
 | Setting | Default | |
 | --- | --- | --- |

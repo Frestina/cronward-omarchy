@@ -136,7 +136,16 @@ test("cronward not found", () => {
 test("not set up: no config here, or no copy from the host yet", () => {
   let m = View.model(failedRun(2, "cronward: no config at /home/me/.config/cronward/config.toml; write one with: cronward init"), "", NOW)
   assert.equal(m.kind, "notsetup")
-  assert.match(m.message, /set this widget's host/)
+  assert.match(m.message, /To follow cronward on another computer/)
+  // The commands for a viewer, in order: cronward's viewer first, then the host, by the
+  // plugin's own id.
+  const id = JSON.parse(fs.readFileSync(new URL("../manifest.json", import.meta.url), "utf8")).id
+  const lines = m.message.split("\n")
+  const viewer = lines.indexOf("cronward install --viewer <host>")
+  const host = lines.indexOf("omarchy bar set " + id + " host <host>")
+  assert.ok(viewer > 0 && host === viewer + 1, m.message)
+  assert.ok(lines.indexOf("cronward init") > host, m.message)
+  assert.equal(m.tooltip, "cronward: cronward isn't set up on this computer.")
   m = View.model(failedRun(2, "cronward: no status from homeserver yet (last try: cannot reach homeserver: ssh: No route to host): it is fetched hourly at :08, or now with: cronward watch homeserver"), "homeserver", NOW)
   assert.equal(m.kind, "notsetup")
   assert.equal(m.message, "No status from homeserver yet. This machine fetches it hourly at :08; "

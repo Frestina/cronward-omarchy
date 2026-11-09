@@ -10,6 +10,7 @@
 var STALE = 30 * 60 // cronward's own: a main machine whose last tick is older has stopped
 var TOKEN_PAGE = "https://github.com/settings/personal-access-tokens"
 var INSTALL_PAGE = "https://github.com/Frestina/cronward#install"
+var PLUGIN_ID = "io.github.frestina.cronward" // as in manifest.json; a test checks they match
 var WORDS = { passed: "passed", failed: "failed", didnt_run: "didn't run", pending: "running" }
 var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
@@ -486,9 +487,14 @@ function classify(run, host) {
   var reason = lastLine(run.stderr)
   if (run.exitCode !== 0 && run.exitCode !== 1) {
     if (/^no config at /.test(reason))
-      return { kind: "notsetup", message: "cronward has no config on this machine. If it runs "
-        + "on another machine, set this widget's host to it; if it should run here, start "
-        + "with `cronward init`." }
+      // One command per line, so neither wraps in the middle.
+      return { kind: "notsetup", message: "cronward isn't set up on this computer.\n\n"
+        + "To follow cronward on another computer, run these two commands here, with "
+        + "<host> being the name you use with ssh:\n"
+        + "cronward install --viewer <host>\n"
+        + "omarchy bar set " + PLUGIN_ID + " host <host>\n\n"
+        + "To run cronward on this computer instead:\n"
+        + "cronward init" }
     if (/^no status from .* yet/.test(reason))
       return { kind: "notsetup", message: "No status from " + host + " yet. This machine fetches "
         + "it hourly at :08; Check now fetches it now." + (/last try: /.test(reason)
@@ -535,7 +541,7 @@ function model(run, host, nowMs) {
               tooltip: "" }
   if (c.kind !== "status") {
     out.level = c.kind === "error" ? "bad" : "warn"
-    out.tooltip = "cronward: " + c.message
+    out.tooltip = "cronward: " + c.message.split("\n")[0] // the popup has the rest
     return out
   }
   var st = c.status

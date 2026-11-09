@@ -14,7 +14,10 @@ own. Every change is a cronward command.
 - `classify()` sorts the run: not started or exit 127 is cronward not
   found; exit 2 with `no config at` or `no status from ... yet` is not set
   up; any other exit 2, or JSON that is not schema 1, is an error (`bad`).
-  Nothing unknown is ever quiet.
+  Nothing unknown is ever quiet. No config here gives the two commands for a
+  viewer, `cronward install --viewer HOST` and `omarchy bar set ID host
+  HOST`, each on its own line so neither wraps; `PLUGIN_ID` is checked
+  against `manifest.json`. The bar's tooltip has the message's first line.
 - Stopped ticking: on a viewer, cronward's own `viewer.stopped_ticking`;
   on the main machine, `now - last_tick` over cronward's 30 minutes, or no
   tick at all while there are jobs.
