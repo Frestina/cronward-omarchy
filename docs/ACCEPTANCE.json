@@ -1,8 +1,8 @@
 {
   "status": "passed",
-  "input_commit": "e0e1867cc7d29473830225602541d15d7af0e0b9",
+  "input_commit": "015ec300e1e778c181b7188bcf3b16ce4fdc35cf",
   "date": "2026-11-15",
-  "platform": "Arch Linux, Omarchy 4.5.0-3, Hyprland 0.56.2, Quickshell 0.3.2 (r7), Node.js 22.23.3. A desktop with three 1920x1200 monitors (two at scale 1.6, one at scale 1), bar at the top, as a viewer of the main machine. cronward from its main branch at 44efc1a (2026-11-15, reports 0.1.0). Also this laptop (Omarchy 4.5.0-3, one 2560x1600 monitor at scale 2), a viewer of the same main machine, for the demo states that press keys.",
+  "platform": "Arch Linux, Omarchy 4.5.0-3, Hyprland 0.56.2, Quickshell 0.3.2 (r7), Node.js 22.23.3. A desktop with three 1920x1200 monitors (two at scale 1.6, one at scale 1), bar at the top, as a viewer of the main machine. cronward from its main branch at 44efc1a (2026-11-15), which is in cronward v0.2.0. Also this laptop (Omarchy 4.5.0-3, one 2560x1600 monitor at scale 2), a viewer of the same main machine, for the demo states that press keys.",
   "omarchy_version": "4.5.0-3",
   "commands": [
     "./tests/run, on the desktop and on the laptop",
@@ -13,7 +13,8 @@
     "On the desktop: demo/run \"0,0 4320x760\" mixed unreachable timeout check-timeout workflows-list workflows-timeout",
     "On the laptop: demo/run \"600,0 680x440\" didnt-run workflows-list timeout workflows-timeout add-timeout action-timeout check-timeout",
     "By hand on the desktop, on real data: Check now, right click, a row's link, Config, Token, Set up with agent, Workflows, Add job, Run now, Remove, Remove account, a theme switch and a vertical bar",
-    "Set up with agent on the laptop, with the agent asked to read back the guide's path from its prompt"
+    "Set up with agent on the laptop, with the agent asked to read back the guide's path from its prompt",
+    "After the run: VERSION and manifest.json set to 0.2.0 and the README pointed at cronward v0.2.0 (015ec30), then ./tests/run, omarchy plugin validate and the plain-text check again on the laptop"
   ],
   "results": [
     "Portable checks (80 tests) pass on both machines; the Omarchy validator and the plain-text check pass. shellcheck is not installed on the desktop, so it ran on the laptop only.",
@@ -25,7 +26,8 @@
     "Add job on a workflow in a private test repo: the job showed in the jobs after the add, and a refused add showed cronward's reason in the form.",
     "Run now and Remove each asked first; Cancel and Esc did nothing; a yes to Run now showed the row running, and a yes to Remove took the row away.",
     "Remove account was dimmed, with the jobs named, while a job used the account.",
-    "A theme switch: the warning and 'on cronward' colours followed the new theme. A vertical bar showed the icon without the count, as designed."
+    "A theme switch: the warning and 'on cronward' colours followed the new theme. A vertical bar showed the icon without the count, as designed.",
+    "015ec30 changes only the version numbers and the README since e0e1867, the commit tested by hand; the checks pass on it."
   ],
   "limitations": [
     "The no-answer states came from the demo's exit 124, not from a real ssh that hung; tests/deadline.test.mjs checks with a fake cronward that nothing is left running at the deadline or after a SIGTERM.",
