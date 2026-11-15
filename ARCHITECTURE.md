@@ -207,6 +207,11 @@ the installed plugin (`setupPrompt()`, `explainPrompt()`), so they have to
 ship. They tell that agent how to help with the user's own cronward jobs,
 and keep it away from tokens; they say nothing about developing the widget.
 
+`scripts/`, `tests/`, `demo/` and `.template/` are for developing and
+releasing the widget: the checks, the fake cronward for screenshots, and the
+record of the starter it was generated from. The widget loads only
+`Cronward.qml` and `CronwardView.js` and never runs any of them.
+
 Nothing runs with elevated privileges, and nothing is installed outside the
 plugin folder. The widget keeps no files; removing it leaves nothing behind.
 Node.js is a development dependency for the checks only.

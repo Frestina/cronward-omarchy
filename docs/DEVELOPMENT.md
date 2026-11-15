@@ -47,7 +47,9 @@ QML file can trip it ("Unbalanced braces"). Keep such logic in
   Omarchy installs: no agent instruction files (see "What is installed" in
   ARCHITECTURE.md).
 - `.template/blueprint` keeps the starter as it was generated; change the
-  product files instead.
+  product files instead. The template's `docs/SETUP.md` (starting a new
+  project from the template) is left out, as it is not about this widget;
+  leave it out when porting a newer template.
 - Release notes say what changed for the user (Merge and Tell guidance when
   available).
 - Docs: sentence case headings, straight quotes, no em dashes, no emoji.

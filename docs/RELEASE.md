@@ -4,7 +4,7 @@ The included workflow creates a **draft source release**. It never publishes a m
 
 1. Finish the feature and replace starter copy. Confirm licences and asset rights.
 2. Run portable and native checks. On Omarchy record the exact installed version, commands, results, source commit and limitations in docs/ACCEPTANCE.json. Set status to passed only after actual acceptance. Record this in a subsequent documentation-only commit.
-3. Update VERSION and any manifest/Cargo/package version before testing. Commit, tag the accepted candidate, and push the tag.
+3. Update VERSION and any manifest/Cargo/package version before testing. Commit, tag the accepted candidate with an annotated tag (`git tag -a v0.2.1 -m v0.2.1`), and push the tag. v0.1.0 and v0.2.0 are lightweight tags and stay as published.
 4. Run **Release source** from Actions with that existing tag. The source archive preserves the complete tracked project, including development checks. Installed runtime packages must use an explicit file allowlist and exclude authoring instructions, blueprint files and workflow files.
 5. Review the draft release, write outcome-focused notes and publish when ready.
 
