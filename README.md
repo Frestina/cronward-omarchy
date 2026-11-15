@@ -72,8 +72,7 @@ them. Each account has its own section, with a button to GitHub's token
 page that says which GitHub account to sign in as, and an account whose
 repos could not be listed says why without hiding the others. **Add
 account** stores a token for another GitHub account in a terminal on the
-main machine; cronward adds the account to its config itself (its `main`
-from 2026-11-05). **Remove account**, below an account's repos, asks first,
+main machine; cronward adds the account to its config itself. **Remove account**, below an account's repos, asks first,
 then deletes its token on the main machine and takes it out of cronward's
 config (`cronward token remove`). Not while a job uses it: the button is
 dimmed, and its tooltip names the jobs to remove first. The token itself
@@ -104,18 +103,14 @@ ask before a test run or a push.
 ## Requirements
 
 - Omarchy 4.
-- cronward with `status --host` and `--on`: its `main` branch from
-  2026-11-04, or the first release after v0.1.0.
+- [cronward v0.2.0](https://github.com/Frestina/cronward/releases/tag/v0.2.0)
+  or later, on the laptop and on the main machine.
   - On the machine that runs cronward: nothing else.
   - On a laptop: cronward installed as a viewer of the main machine
     (`cronward install --viewer homeserver`). For the buttons that change
     something there (Config, storing a token, Add job, Run now, Remove,
-    Set up with agent), an ssh
-    login to it that can run commands, as `cronward --on` needs. A job
-    added or removed there shows on the laptop at once with cronward's
-    `main` from 2026-11-05, which writes the status again after `add` and
-    `remove`; before that, after the main machine's next tick and the
-    laptop's next fetch.
+    Set up with agent), an ssh login to it that can run commands, as
+    `cronward --on` needs.
 
 ## Install
 
