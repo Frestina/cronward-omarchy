@@ -1,9 +1,56 @@
 # Develop and test the plugin
 
+Read [README.md](../README.md) and [ARCHITECTURE.md](../ARCHITECTURE.md)
+before a change.
+
 Run `./tests/run` for the portable checks: the template's structure check,
 `CronwardView.js` against every fixture (in UTC), and the demo scripts with
 `bash -n` and shellcheck. On an Omarchy machine also run
 `omarchy plugin validate "$PWD"`.
+
+The plain-text check from the Build Omarchy Plugins test skill
+(`omarchy-plugin-test`) checks that every `Text` and tooltip in the QML
+shows its text as plain text. Run it from the skill's folder:
+
+```bash
+python3 <skill-dir>/scripts/check_plain_text.py "$PWD"
+```
+
+It reads the QML by its tokens, not as QML, so a regular expression in a
+QML file can trip it ("Unbalanced braces"). Keep such logic in
+`CronwardView.js`, with a test, as the theme colours are
+(`themeColors()`).
+
+## Rules for changes
+
+- The widget only displays: cronward decides what passed, failed or didn't
+  run, `CronwardView.js` sorts it, and `Cronward.qml` shows it. Keep rules
+  out of QML. See [ARCHITECTURE.md](../ARCHITECTURE.md) for what the widget
+  may run; it never reads cronward's files or a token, and never talks to
+  the network or ssh itself. A change on the main machine is
+  `cronward --on HOST ...`.
+- Every new state gets a fixture in `demo/fixtures` and a test, and
+  `demo/run` shows it in the installed widget. Test the behaviour you
+  changed; the portable checks do not stand in for trying it in the bar.
+- Fixtures, docs and screenshots use fictional names (`me/widget`,
+  `homeserver`), never real hostnames, usernames or home paths.
+- Follow [Build Omarchy Plugins](https://github.com/tcballard/build-omarchy-plugins)
+  guidance, and check the current upstream contract before relying on an
+  API of one Omarchy version.
+- The widget keeps its settings in its own `shell.json` entry. Removing it
+  leaves user data and unrelated desktop configuration as they were.
+- Keep the README's centered title, its one category badge and the credit
+  to the projects it builds on. Claim a screenshot, a listing or a
+  supported version only with evidence.
+- Workflow actions stay pinned to a full commit SHA, with the fewest token
+  permissions. Nothing for developing the widget goes in the checkout that
+  Omarchy installs: no agent instruction files (see "What is installed" in
+  ARCHITECTURE.md).
+- `.template/blueprint` keeps the starter as it was generated; change the
+  product files instead.
+- Release notes say what changed for the user (Merge and Tell guidance when
+  available).
+- Docs: sentence case headings, straight quotes, no em dashes, no emoji.
 
 ## In the bar
 
@@ -15,7 +62,8 @@ omarchy-shell shell rescanPlugins
 omarchy plugin enable io.github.frestina.cronward
 ```
 
-The shell reloads a linked plugin when its files change. Its log is the
+After a change to a QML file, run `omarchy restart shell`: a plugin reached
+through a link is not loaded again by `rescanPlugins`. Its log is the
 newest `/run/user/$UID/quickshell/by-id/*/log.log`.
 
 To see the states without a real cronward, `demo/run "<x>,<y> <w>x<h>"

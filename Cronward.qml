@@ -28,7 +28,7 @@ Panel {
   readonly property string host: String(setting("host", "") || "").trim()
   readonly property string cronward: String(setting("cronward", "cronward") || "").trim() || "cronward"
   readonly property int refreshSec: Math.min(3600, Math.max(30, Number(setting("refreshSec", 60)) || 60))
-  readonly property string pluginDir: decodeURIComponent(Qt.resolvedUrl(".").toString().replace(/^file:\/\//, "")).replace(/\/$/, "")
+  readonly property string pluginDir: View.pluginDir(Qt.resolvedUrl(".").toString())
 
   // What CronwardView.model() made of the last status run.
   property var view: null
@@ -335,15 +335,12 @@ Panel {
     return root.dim(0.45)
   }
 
-  // The first of orange, yellow and ANSI yellow that colors.toml has.
+  // The theme's warning and "on cronward" colours (CronwardView.themeColors()),
+  // or the accent for one the theme lacks.
   function loadWarnColor(raw) {
-    var found = {}
-    String(raw || "").split("\n").forEach(function(line) {
-      var match = line.match(/^\s*([A-Za-z0-9_-]+)\s*=\s*["']?(#[0-9A-Fa-f]{6})/)
-      if (match) found[match[1]] = match[2]
-    })
-    root.warnColor = found.orange || found.yellow || found.color3 || Color.accent
-    root.okColor = found.green || found.color2 || Color.accent
+    var found = View.themeColors(raw)
+    root.warnColor = found.warn || Color.accent
+    root.okColor = found.ok || Color.accent
   }
 
   onOpenedChanged: {

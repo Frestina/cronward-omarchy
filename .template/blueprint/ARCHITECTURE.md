@@ -6,4 +6,4 @@ No files, network requests, background processes, global configuration or instal
 
 The starter only renders fixed symbols and fixed tooltip strings. For external text, use explicit Text.PlainText content items, including nested delegates and preview buttons. Do not rely on Qt AutoText.
 
-Node is a development dependency for portable checks; it is not used by the runtime widget. Workbench registration and command trust remain explicit user actions.
+Node is a development dependency for portable checks; it is not used by the runtime widget.

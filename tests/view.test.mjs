@@ -242,3 +242,34 @@ test("text from status is kept as plain text by the QML", () => {
   assert.ok(texts.length > 0)
   assert.equal(plain.length, texts.length, "every Text sets textFormat: Text.PlainText")
 })
+
+test("theme colours: orange, then yellow, then color3; green, then color2", () => {
+  const toml = [
+    'accent = "#7aa2f7"',
+    'yellow = "#e0af68"',
+    "orange = '#ff9e64'",
+    "color3 = #aaaa00",
+    'green = "#9ece6a"',
+    "  color2 =   \"#00aa00\"",
+  ].join("\n")
+  assert.deepEqual(View.themeColors(toml), { warn: "#ff9e64", ok: "#9ece6a" })
+  assert.deepEqual(View.themeColors('yellow = "#e0af68"\ncolor2 = "#00aa00"'),
+    { warn: "#e0af68", ok: "#00aa00" })
+  assert.deepEqual(View.themeColors("color3 = #aaaa00\ncolor2 = #00aa00"),
+    { warn: "#aaaa00", ok: "#00aa00" })
+})
+
+test("theme colours the theme lacks are empty, for the accent", () => {
+  assert.deepEqual(View.themeColors(""), { warn: "", ok: "" })
+  assert.deepEqual(View.themeColors(undefined), { warn: "", ok: "" })
+  // Only #rrggbb counts: names, short forms and comments are not colours.
+  assert.deepEqual(View.themeColors('orange = "red"\ngreen = "#9e6"\n# yellow = "#e0af68"'),
+    { warn: "", ok: "" })
+})
+
+test("plugin dir: the path of the plugin's folder URL", () => {
+  assert.equal(View.pluginDir("file:///home/me/.config/omarchy/plugins/io.github.frestina.cronward/"),
+    "/home/me/.config/omarchy/plugins/io.github.frestina.cronward")
+  assert.equal(View.pluginDir("file:///plugins/my%20widget/"), "/plugins/my widget")
+  assert.equal(View.pluginDir("file:///plugins/cronward"), "/plugins/cronward")
+})

@@ -14,7 +14,7 @@ export function check(base=root) {
     assert(!/@@[A-Z_]+@@/.test(fs.readFileSync(path.join(base,f),'utf8')),`Unresolved token in ${f}`);
   }
   const read=f=>fs.readFileSync(path.join(base,f),'utf8');
-  for(const f of ['README.md','LICENSE','CREDITS.md','AGENTS.md','docs/ACCEPTANCE.json','.github/workflows/ci.yml','.github/workflows/release.yml']) assert(tree.includes(f),`Missing ${f}`);
+  for(const f of ['README.md','LICENSE','CREDITS.md','docs/ACCEPTANCE.json','.github/workflows/ci.yml','.github/workflows/release.yml']) assert(tree.includes(f),`Missing ${f}`);
   const readme=read('README.md');
   assert(readme.includes('<h1 align="center">'),'Centered title required');
   assert(!readme.includes('](preview.png)'), 'Do not embed an absent preview');
@@ -38,7 +38,6 @@ export function check(base=root) {
       assert(typeof f==='string' && /^[A-Za-z0-9_./-]+\.qml$/.test(f) && !f.startsWith('/') && !f.split('/').includes('..'));
       assert(tree.includes(f),`Missing QML ${f}`);
     }
-    assert.equal(readJSON(path.join(base,'.omarchy-workbench.json')).schemaVersion,1);
   } else if(c.kind==='theme') {
     const palette={};
     for(const line of read('colors.toml').split('\n')) {

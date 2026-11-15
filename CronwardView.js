@@ -615,6 +615,26 @@ function model(run, host, nowMs) {
   return out
 }
 
+// The theme's colours the widget uses, from the text of its colors.toml:
+// warnings in the first of orange, yellow and ANSI yellow (color3) it has,
+// "on cronward" in green, else ANSI green (color2). An empty string is a
+// colour the theme lacks; the widget then uses the accent. Only "#rrggbb"
+// values count, quoted or not.
+function themeColors(raw) {
+  var found = {}
+  String(raw || "").split("\n").forEach(function(line) {
+    var match = /^\s*([A-Za-z0-9_-]+)\s*=\s*["']?(#[0-9A-Fa-f]{6})/.exec(line)
+    if (match) found[match[1]] = match[2]
+  })
+  return { warn: found.orange || found.yellow || found.color3 || "",
+    ok: found.green || found.color2 || "" }
+}
+
+// The plugin's folder as a path, from Qt.resolvedUrl(".") in the widget.
+function pluginDir(url) {
+  return decodeURIComponent(String(url || "").replace(/^file:\/\//, "")).replace(/\/$/, "")
+}
+
 if (typeof module !== "undefined") {
   module.exports = { STALE: STALE, TOKEN_PAGE: TOKEN_PAGE, INSTALL_PAGE: INSTALL_PAGE,
     quote: quote, when: when, asData: asData, safeUrl: safeUrl, statusArgs: statusArgs,
@@ -626,5 +646,6 @@ if (typeof module !== "undefined") {
     scheduleHint: scheduleHint, addProblem: addProblem, addArgs: addArgs, addResult: addResult,
     action: action, confirmed: confirmed, actionResult: actionResult,
     accountAction: accountAction, removeAccount: removeAccount,
-    explainPrompt: explainPrompt, classify: classify, model: model }
+    explainPrompt: explainPrompt, classify: classify, model: model,
+    themeColors: themeColors, pluginDir: pluginDir }
 }

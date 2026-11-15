@@ -1,8 +1,15 @@
 # Architecture
 
-One rule: cronward decides, the widget displays. The widget reads no
-cronward files, holds no token, and makes no network or ssh calls of its
-own. Every change is a cronward command.
+One rule: cronward decides, the widget displays. cronward says what
+passed, failed or didn't run; `Cronward.qml` only shows what `cronward
+status --json` says, as `CronwardView.js` sorts it. Rules belong in
+`CronwardView.js`, where node tests them, not in QML.
+
+The widget reads no cronward files, holds no token, and makes no network or
+ssh calls of its own. It runs only cronward, a terminal or agent launcher,
+and `xdg-open` on a github.com page. Every change is a cronward command,
+and a change on the main machine is `cronward --on HOST ...`, with the
+user's own ssh.
 
 ## `CronwardView.js` (pure, no QML)
 
@@ -134,6 +141,9 @@ own. Every change is a cronward command.
   agents with `omarchy-agent-prompt`, links with `xdg-open`.
 - Warnings use the theme's `orange`, else `yellow`, else `color3`, else the
   accent, read from `colors.toml` and read again when the palette changes.
+  The file's text goes to `themeColors()` in `CronwardView.js`, which picks
+  the colours; the plugin's folder comes from `pluginDir()` there too, so
+  the QML holds no regular expressions.
 - All text is rendered with `Text.PlainText`; a test checks every `Text`.
 - IPC target `io.github.frestina.cronward`: `open`, `close`, `toggle`,
   `refresh`, `check`, `workflows` (opens the picker), `add ACCOUNT REPO
@@ -164,6 +174,22 @@ own. Every change is a cronward command.
 - `run`: points the widget at the fake in `shell.json`, captures each state
   with `grim` (the add states open the form over IPC and press Enter with
   `wtype`), and puts `shell.json` back byte for byte on exit.
+
+## What is installed
+
+Omarchy installs the whole checkout, so everything in it ships. It holds no
+instructions for the agents that develop it (no `AGENTS.md`, `CLAUDE.md`,
+`.claude/` or the like): marketplace review rejects those in an installed
+plugin, and the rules for changing the widget are ordinary developer docs,
+here and in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). A test checks that
+none comes back.
+
+`docs/AGENT_SETUP.md` and `docs/AGENT_EXPLAIN.md` are different: they are
+part of the widget. Set up with agent and the agent buttons start the
+user's own coding agent with a prompt that names one of them by its path in
+the installed plugin (`setupPrompt()`, `explainPrompt()`), so they have to
+ship. They tell that agent how to help with the user's own cronward jobs,
+and keep it away from tokens; they say nothing about developing the widget.
 
 Nothing runs with elevated privileges, and nothing is installed outside the
 plugin folder. The widget keeps no files; removing it leaves nothing behind.
