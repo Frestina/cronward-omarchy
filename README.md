@@ -221,7 +221,8 @@ widget, through a fake `cronward`, and captures them.
 
 ## Compatibility
 
-Tested on Omarchy 4.0.6 with Hyprland 0.56 and Quickshell 0.3.2. Details in
+Tested on Omarchy 4.5.0 with Hyprland 0.56 and Quickshell 0.3.2, on a
+viewer; v0.1.0 also on Omarchy 4.0.6. Details in
 [acceptance evidence](docs/ACCEPTANCE.json).
 
 ## Credits

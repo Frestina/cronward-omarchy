@@ -1,36 +1,39 @@
 {
   "status": "passed",
-  "input_commit": "850f1895f8934e8f45982dd464acdec370f367f6",
-  "date": "2026-11-05",
-  "platform": "Arch Linux, Omarchy 4.5.0-3, Hyprland 0.56.2, Quickshell 0.3.2 (r7), one 2560x1600 monitor at scale 2, horizontal bar. cronward from its main branch of 2026-11-04 (reports 0.1.0) on the viewer and the main machine. Also a desktop with Omarchy 4.0.6-1, Quickshell 0.3.2 (r7), three 1920x1200 monitors at scale 1, horizontal bar, as a viewer of the same main machine.",
+  "input_commit": "e0e1867cc7d29473830225602541d15d7af0e0b9",
+  "date": "2026-11-15",
+  "platform": "Arch Linux, Omarchy 4.5.0-3, Hyprland 0.56.2, Quickshell 0.3.2 (r7), Node.js 22.23.3. A desktop with three 1920x1200 monitors (two at scale 1.6, one at scale 1), bar at the top, as a viewer of the main machine. cronward from its main branch at 44efc1a (2026-11-15, reports 0.1.0). Also this laptop (Omarchy 4.5.0-3, one 2560x1600 monitor at scale 2), a viewer of the same main machine, for the demo states that press keys.",
   "omarchy_version": "4.5.0-3",
   "commands": [
-    "./tests/run",
-    "omarchy plugin validate <checkout>",
-    "omarchy plugin enable io.github.frestina.cronward, linked from the checkout, with host set to the main machine on a viewer laptop",
-    "omarchy restart shell, after each change to Cronward.qml",
-    "Set up with agent, Ask agent, Config, Token, a row's link and Check now, clicked by hand in the installed widget",
-    "A theme switch, and the bar moved to vertical, by hand",
-    "On the desktop: the widget linked and enabled with host set to the main machine, and demo/run \"-1920,0 5760x480\" mixed running",
-    "demo/run \"600,0 680x440\" token-expiring no-token"
+    "./tests/run, on the desktop and on the laptop",
+    "omarchy plugin validate <installed plugin>",
+    "python3 <omarchy-plugin-test>/scripts/check_plain_text.py <checkout>, on the laptop",
+    "omarchy plugin add (README Install), then omarchy plugin update io.github.frestina.cronward and omarchy restart shell, on the desktop",
+    "omarchy bar set io.github.frestina.cronward host <main machine>, on the desktop",
+    "On the desktop: demo/run \"0,0 4320x760\" mixed unreachable timeout check-timeout workflows-list workflows-timeout",
+    "On the laptop: demo/run \"600,0 680x440\" didnt-run workflows-list timeout workflows-timeout add-timeout action-timeout check-timeout",
+    "By hand on the desktop, on real data: Check now, right click, a row's link, Config, Token, Set up with agent, Workflows, Add job, Run now, Remove, Remove account, a theme switch and a vertical bar",
+    "Set up with agent on the laptop, with the agent asked to read back the guide's path from its prompt"
   ],
   "results": [
-    "Portable checks (26 tests) and the Omarchy validator pass.",
-    "Set up with agent: the agent listed the repos the token reaches, put a private test repo's workflow on cronward through cronward --on, and its test run passed. The row appeared in the widget, and its link opened the run on GitHub.",
-    "The job's next hourly slot ran on schedule and passed, in the widget.",
-    "Ask agent, on a run made to fail on purpose: the agent found the cause from the commit and the run times, said it did not matter, and changed nothing without asking.",
-    "Config opened the main machine's config in an editor, in a terminal. Token opened GitHub's token page.",
-    "Omarchy 4.5.0 bar: the count shows beside the glyph at full size, in red (failed) and orange (didn't run, a token), after the fix in 1afb3db.",
-    "The account key button shows beside a missing or expiring token (demo/run, fictional data). Not clicked: it would run token set on the fictional host.",
-    "A theme switch: the widget followed the new theme.",
-    "A vertical bar: the icon shows without the count, as designed (no room; the tooltip says it), in the same colour as on a horizontal bar. The user's other bar plugins do the same.",
-    "Three monitors (Omarchy 4.0.6): the widget shows on each monitor's bar, and the popup opens below the button on the monitor it was opened from.",
-    "Omarchy 4.0.6, without labelText: the count and the running mark are drawn in text beside a full-size glyph, on all three monitors, as the shell's other counts are.",
-    "On 2026-11-04, on Omarchy 4.0.6: Check now over IPC ran cronward watch and moved 'as of' forward, and every fixture state, plus not set up and error, rendered distinct (demo/run)."
+    "Portable checks (80 tests) pass on both machines; the Omarchy validator and the plain-text check pass. shellcheck is not installed on the desktop, so it ran on the laptop only.",
+    "Installed on the desktop by following the README: after setting the Main machine, the widget read the status the desktop's cronward viewer fetched, and Workflows listed the main machine's accounts and repos.",
+    "Every demo state on the desktop rendered in the theme's colours, the popup opened under the button on the first monitor, the count showed on all three bars, and shell.json was put back byte for byte.",
+    "The five no-answer states (status, Check now, Workflows, Add job, Run now) each said who gave no answer and in how long, and the popup did not stay busy. Add job and Run now said the change may have happened anyway, and the status was read again.",
+    "Check now moved 'as of' forward; right click opened cronward status in a terminal; a row opened its run on GitHub.",
+    "Config, Token and Set up with agent opened a terminal, GitHub's token page and the agent, on the main machine through cronward --on. The agent's prompt named docs/AGENT_SETUP.md in the installed plugin.",
+    "Add job on a workflow in a private test repo: the job showed in the jobs after the add, and a refused add showed cronward's reason in the form.",
+    "Run now and Remove each asked first; Cancel and Esc did nothing; a yes to Run now showed the row running, and a yes to Remove took the row away.",
+    "Remove account was dimmed, with the jobs named, while a job used the account.",
+    "A theme switch: the warning and 'on cronward' colours followed the new theme. A vertical bar showed the icon without the count, as designed."
   ],
   "limitations": [
-    "Not yet tried: the running mark in the bar on Omarchy 4.5.0 (seen on 4.0.6).",
-    "The account key button was seen, not clicked, against a real missing or expiring token.",
-    "Not yet tried on the main machine itself (host blank) with a real cronward."
+    "The no-answer states came from the demo's exit 124, not from a real ssh that hung; tests/deadline.test.mjs checks with a fake cronward that nothing is left running at the deadline or after a SIGTERM.",
+    "Not tried: a shell restart while a call runs. If Quickshell kills timeout with SIGKILL, only cronward's own limits (Frestina/cronward#51) stop its ssh.",
+    "The demo states that press keys (the add form, Run now, Remove, Remove account) were captured on the laptop only, so no key could reach another window on the desktop. On the desktop these buttons were used by hand.",
+    "Ask agent (on a failed or didn't-run job) was not clicked in this run; it was in the v0.1.0 acceptance.",
+    "The account key button has still only been seen, not clicked, against a real missing or expiring token.",
+    "Not yet tried on the main machine itself (host blank) with a real cronward.",
+    "Omarchy 4.0.6 was tested with v0.1.0 only."
   ]
 }
