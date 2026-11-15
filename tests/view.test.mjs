@@ -201,7 +201,8 @@ test("commands: only cronward, through --on on a viewer", () => {
   assert.deepEqual(View.onMain("", ["edit"]), ["edit"])
   const argv = View.processArgv("cronward", ["status", "--json"])
   assert.deepEqual(argv.slice(0, 2), ["sh", "-c"])
-  assert.deepEqual(argv.slice(3), ["sh", "cronward", "status", "--json"])
+  assert.deepEqual(argv.slice(3), ["sh", "cronward", "30", "status", "--json"])
+  assert.match(argv[2], /exec timeout -k 5 "\$s" "\$c" "\$@"$/)
   assert.equal(View.shellLine("/opt/my cronward", ["--on", "home'server", "edit"]),
     "c='/opt/my cronward'; " + 'if [ "$c" = cronward ] && ! command -v cronward >/dev/null 2>&1; then c="$HOME/.local/bin/cronward"; fi; "$c" '
     + "'--on' 'home'\\''server' 'edit'")

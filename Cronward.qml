@@ -40,6 +40,7 @@ Panel {
   property bool procStarted: false
   property int procExitCode: 0
   property bool checkStarted: false
+  property int checkExitCode: 0
   property bool refreshAgain: false
 
   // The popup's page: "status", or "workflows" for the picker, which lists
@@ -158,8 +159,22 @@ Panel {
     if (checkProc.running) return
     checking = true
     checkStarted = false
+    checkExitCode = 0
     checkProc.command = View.processArgv(root.cronward, args)
     checkProc.running = true
+  }
+
+  // A watch that gave no answer says so, unless a note from an add or an
+  // action is up; its other failures show in the status it then reads.
+  function finishCheck() {
+    checking = false
+    var late = View.checkResult({ started: checkStarted, exitCode: checkExitCode }, root.host)
+    if (late !== "" && statusNote === "" && !acting) {
+      statusNote = late
+      statusNoteLevel = "warn"
+      notePage = "status"
+    }
+    refreshAll()
   }
 
   function run(line) {
@@ -253,6 +268,8 @@ Panel {
                              stdout: addOut.text, stderr: addErr.text }, root.host)
     if (r.kind !== "added") {
       addOutcome = r
+      // No answer: it may have been added, and the jobs should say.
+      if (r.recheck) root.checkNow()
       return
     }
     statusNote = r.message
@@ -390,7 +407,8 @@ Panel {
   Process {
     id: checkProc
     onStarted: root.checkStarted = true
-    onRunningChanged: if (!running) { root.checking = false; root.refreshAll() }
+    onExited: function(exitCode) { root.checkExitCode = exitCode }
+    onRunningChanged: if (!running) root.finishCheck()
     stdout: StdioCollector { waitForEnd: true }
     stderr: StdioCollector { waitForEnd: true }
   }

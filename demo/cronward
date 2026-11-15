@@ -15,7 +15,11 @@
 # both fail as ssh would. `token remove` prints action/account-removed.txt,
 # or in the state "account-old" account-old.txt, as a cronward from before
 # it took the account out of the config; a removed account is then left out
-# of `workflows --json` until the demo state changes. Fictional names only.
+# of `workflows --json` until the demo state changes. A call that gave no
+# answer exits 124, as coreutils timeout does at the widget's deadline:
+# `status` in the state "timeout", `workflows` in "workflows-timeout", `add`
+# in "add-timeout", `run` and `remove` in "action-timeout", and `watch` (Check
+# now) in "check-timeout". Fictional names only.
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 state=$(head -n1 "${XDG_RUNTIME_DIR:-/tmp}/cronward-demo" 2>/dev/null || true)
@@ -32,6 +36,7 @@ case ${1:-} in
       workflows-unreachable) printf '%s\n' "ssh: connect to host homeserver port 22: Connection refused" \
         "cronward: cannot run cronward on homeserver: ssh failed (above)" >&2; exit 2 ;;
       workflows-readonly) echo "cronward: this key only reads the status" >&2; exit 1 ;;
+      workflows-timeout) sleep 1; exit 124 ;;
     esac
     name=list; [[ $state == workflows-* ]] && name=${state#workflows-}
     sleep 1
@@ -51,12 +56,14 @@ PY
     sleep 1
     case $state in
       add-refused) cat "$here/fixtures/add/refused.txt" >&2; exit 1 ;;
+      add-timeout) exit 124 ;;
       add-unreachable) printf '%s\n' "ssh: connect to host homeserver port 22: Connection refused" \
         "cronward: cannot run cronward on homeserver: ssh failed (above)" >&2; exit 2 ;;
     esac
     cat "$here/fixtures/add/added.txt"; exit 0 ;;
   run|remove)
     sleep 1
+    [[ $state == action-timeout ]] && exit 124
     if [[ $state == action-unreachable ]]; then
       printf '%s\n' "ssh: connect to host homeserver port 22: Connection refused" \
         "cronward: cannot run cronward on homeserver: ssh failed (above)" >&2; exit 2
@@ -76,14 +83,15 @@ PY
       exit 0
     fi
     echo "demo: cronward $*: nothing done, this is the demo"; exit 0 ;;
-  watch) sleep 1; exit 0 ;;
+  watch) sleep 1; [[ $state == check-timeout ]] && exit 124; exit 0 ;;
   *) echo "demo: cronward $*: nothing done, this is the demo" ; exit 0 ;;
 esac
 case $state in
   not-set-up) echo "cronward: no config at $HOME/.config/cronward/config.toml; write one with: cronward init" >&2; exit 2 ;;
   error) echo "cronward: state.json does not read: Expecting value: line 1 column 1 (char 0)" >&2; exit 2 ;;
+  timeout) exit 124 ;;
 esac
-case $state in workflows-*|add-*|run-*|remove-*|action-*|account-*) state=mixed ;; esac
+case $state in workflows-*|add-*|run-*|remove-*|action-*|account-*|check-*) state=mixed ;; esac
 fixture=$here/fixtures/$state.json
 [[ -f $fixture ]] || { echo "demo: no fixture $state" >&2; exit 2; }
 python3 -I - "$fixture" <<'PY'

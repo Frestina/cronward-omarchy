@@ -78,7 +78,10 @@ Remove, `run-confirm` and `remove-confirm` show the question, `run-cancelled`
 answers it with Esc, and `run-started`, `run-refused`, `remove-done` and
 `action-unreachable` answer yes. `account-confirm` asks to remove the
 account `work` on the picker, and `account-removed` and `account-old` answer
-yes, from a current cronward and an older one. With no state it
+yes, from a current cronward and an older one. A call that gave no answer by
+its deadline: `timeout` for the status, `workflows-timeout`, `add-timeout`
+(Enter in the form), `action-timeout` (yes to Run now), and `check-timeout`,
+which presses Check now. With no state it
 writes `preview.png` from `mixed`; check that it shows only fictional names
 before committing it. Capture the popup and the bar icon above it, 422
 logical pixels wide from its left edge less one. `docs/workflows.png` is

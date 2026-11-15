@@ -169,6 +169,13 @@ machine through `cronward --on <host>`.
   remove`), each asked first.
 - **Check now** and **the terminal**: as middle and right click.
 
+Each call the widget makes has a time limit: 30 seconds for the status, a
+minute for Check now, three for Workflows and 90 seconds for the rest. One
+that gives no answer by then, such as ssh waiting on a dropped connection, is
+stopped along with the ssh it started, and the popup says so. A change
+stopped that way may still have happened on the main machine, so the popup
+reads the status again to show it.
+
 ## What it shows
 
 | Popup header | Meaning |

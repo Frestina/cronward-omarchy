@@ -70,14 +70,55 @@ function checkArgs(host) {
   return host ? ["watch", host] : null
 }
 
+// What to say after Check now: "" unless `watch` gave no answer. Its own
+// failures (ssh, offline) are in the viewer's record, which the status shows.
+function checkResult(run, host) {
+  var late = noAnswer(run, checkArgs(host))
+  return late ? "Check now: " + late.charAt(0).toLowerCase() + late.slice(1)
+    + ". This is the status fetched before." : ""
+}
+
 // A change runs on the main machine: through `cronward --on HOST` on a viewer.
 function onMain(host, args) {
   return host ? ["--on", host].concat(args) : args
 }
 
-// For a Process: argv that runs cronward with args.
-function processArgv(command, args) {
-  return ["sh", "-c", 'c=$1; shift; ' + FIND + '; exec "$c" "$@"', "sh", command || "cronward"].concat(args)
+// How long a call may take, in seconds, before the widget stops it. On a
+// viewer most calls go over ssh, which can wait for good on a dropped
+// connection or an agent asking for a key touch; the widget would stay busy
+// until the shell restarts. `workflows` asks GitHub for every repo, so it
+// gets longest; add, run, remove and token remove the default.
+var DEADLINES = { status: 30, watch: 60, workflows: 180 }
+var DEADLINE = 90
+// coreutils timeout's exit when the deadline passed, and after its KILL.
+var TIMED_OUT = [124, 137]
+
+function subcommand(args) {
+  var a = args || []
+  return a[0] === "--on" ? a.slice(2) : a
+}
+
+function deadline(args) {
+  return DEADLINES[subcommand(args)[0]] || DEADLINE
+}
+
+// For a Process: argv that runs cronward with args, under coreutils timeout.
+// timeout runs it in a process group of its own and stops the whole group,
+// both at the deadline and when the widget stops it, so cronward's ssh goes
+// too (a stopped Process signals only its own child). seconds is for tests.
+function processArgv(command, args, seconds) {
+  return ["sh", "-c", 'c=$1; s=$2; shift 2; ' + FIND + '; exec timeout -k 5 "$s" "$c" "$@"', "sh",
+    command || "cronward", String(seconds || deadline(args))].concat(args)
+}
+
+// "" unless the run ran out of time; then who gave no answer, and how soon.
+// Over --on and for watch that is the main machine, else cronward here.
+function noAnswer(run, args) {
+  if (!run.started || TIMED_OUT.indexOf(run.exitCode) < 0) return ""
+  var a = args || []
+  var host = a[0] === "--on" || a[0] === "watch" ? a[1] : ""
+  return (host ? "No answer from " + host : "cronward gave no answer") + " in "
+    + deadline(args) + " s, so the widget stopped it"
 }
 
 // For a terminal or bar.run: a shell line that runs cronward with args.
@@ -220,6 +261,8 @@ function picker(run, host) {
   if (!run.started || run.exitCode === 127)
     return { kind: "missing", message: "cronward is not installed here: no `cronward` on the "
       + "shell's PATH and no ~/.local/bin/cronward.", accounts: [] }
+  var late = noAnswer(run, workflowsArgs(host))
+  if (late) return { kind: "timeout", accounts: [], message: late + ". Press r to try again." }
   var data = null
   try { data = JSON.parse(run.stdout) } catch (e) { data = null }
   if (data && Array.isArray(data.accounts))
@@ -365,6 +408,11 @@ function addResult(run, host) {
   if (!run.started || run.exitCode === 127)
     return { kind: "missing", message: "cronward is not installed here: no `cronward` on the "
       + "shell's PATH and no ~/.local/bin/cronward." }
+  var late = noAnswer(run, onMain(host, ["add"]))
+  if (late)
+    return { kind: "timeout", recheck: true, message: late + ". The job may have been added "
+      + "anyway: the jobs show it once the status is read again, so look there before adding "
+      + "it again." }
   if (run.exitCode === 0)
     return { kind: "added", message: said(run.stdout).split("\n").filter(function(l) {
       return !/^try it now with: /.test(l) }).join("\n") }
@@ -437,6 +485,13 @@ function actionResult(act, run, host) {
   if (!run.started || run.exitCode === 127)
     return { kind: "missing", level: "bad", message: "cronward is not installed here: no "
       + "`cronward` on the shell's PATH and no ~/.local/bin/cronward." }
+  var late = noAnswer(run, act.args)
+  if (late)
+    return { kind: "timeout", level: "warn", message: late + ". "
+      + (act.kind === "run" ? "The run may have started anyway: the row shows it"
+        : act.kind === "account" ? "The account may have been removed anyway: the list shows it"
+        : "The job may have been removed anyway: the jobs show it")
+      + " once read again." }
   var out = said(run.stdout)
   if (run.exitCode === 0) {
     if (act.kind === "run")
@@ -484,6 +539,8 @@ function classify(run, host) {
     return { kind: "missing", message: "cronward is not installed here: no `cronward` on the "
       + "shell's PATH and no ~/.local/bin/cronward. Install it, or set the widget's cronward "
       + "setting to its path." }
+  var late = noAnswer(run, statusArgs(host))
+  if (late) return { kind: "error", message: late + "." }
   var reason = lastLine(run.stderr)
   if (run.exitCode !== 0 && run.exitCode !== 1) {
     if (/^no config at /.test(reason))
@@ -647,5 +704,6 @@ if (typeof module !== "undefined") {
     action: action, confirmed: confirmed, actionResult: actionResult,
     accountAction: accountAction, removeAccount: removeAccount,
     explainPrompt: explainPrompt, classify: classify, model: model,
-    themeColors: themeColors, pluginDir: pluginDir }
+    themeColors: themeColors, pluginDir: pluginDir, deadline: deadline, noAnswer: noAnswer,
+    checkResult: checkResult }
 }

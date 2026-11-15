@@ -31,7 +31,16 @@ user's own ssh.
 - A disabled job's old result is no problem, as in cronward's exit code.
 - Commands: `processArgv()` for a `Process` and `shellLine()` for a
   terminal both run the `cronward` setting, falling back to
-  `~/.local/bin/cronward` for the default. Changes go through `onMain()`,
+  `~/.local/bin/cronward` for the default. `processArgv()` runs it under
+  coreutils `timeout -k 5`, with `deadline()`: 30 s for `status`, 60 for
+  `watch`, 180 for `workflows`, 90 for the rest, through `--on` or not.
+  `timeout` runs cronward in a process group of its own and stops the whole
+  group, at the deadline and when the widget stops the `Process` (which
+  signals only its own child), so the ssh cronward started goes too.
+  `noAnswer()` reads its 124, or 137 after its KILL: the status is an error,
+  the picker a `timeout` kind with r to try again, an add or an action may
+  have happened anyway (the add's `recheck` reads the status again), and
+  `checkResult()` gives Check now a note. Changes go through `onMain()`,
   which puts `--on HOST` first on a viewer. `quote()` is POSIX single
   quoting. `open()` returns an `xdg-open` line only for a
   `https://github.com/` URL of plain characters (`safeUrl()`).
@@ -98,7 +107,9 @@ user's own ssh.
   completion is handled on `onRunningChanged`, since a command that fails to
   start only flips `running`.
 - Check now: on a viewer, `cronward watch HOST` in a second `Process`, then
-  every monitor's copy reads the status again (`bar.moduleWidgets`). Its
+  every monitor's copy reads the status again (`bar.moduleWidgets`). A
+  watch that gave no answer leaves a note over the jobs (`finishCheck()`),
+  unless a note from an add or an action is up. Its
   notices are cronward's own, from the viewer's record, so a check gives no
   notice the hourly timer would not. On the main machine, a fresh status.
 - The popup has three pages: the jobs (`status`), the workflow picker
@@ -165,6 +176,11 @@ user's own ssh.
   when the start did not go through, what `cronward remove` prints, and
   what `cronward token remove` prints: the account removed, kept for a job,
   and from a cronward too old to take it out.
+- A call that gave no answer has no output, only timeout's exit 124, so
+  its states (`timeout`, `workflows-timeout`, `add-timeout`,
+  `action-timeout`, `check-timeout`) have no fixture file: the fake exits
+  124 for them, and `tests/deadline.test.mjs` checks the sorting and, with a
+  fake cronward that starts a child, that nothing is left running.
 - `cronward`: a fake that prints the fixture named in
   `$XDG_RUNTIME_DIR/cronward-demo` with its times moved to now, or the
   stderr of the not-set-up and error states. It takes `--on HOST` as
