@@ -1,47 +1,26 @@
 {
   "status": "passed",
-  "input_commit": "015ec300e1e778c181b7188bcf3b16ce4fdc35cf",
-  "date": "2026-11-15",
-  "platform": "Arch Linux, Omarchy 4.5.0-3, Hyprland 0.56.2, Quickshell 0.3.2 (r7), Node.js 22.23.3. A desktop with three 1920x1200 monitors (two at scale 1.6, one at scale 1), bar at the top, as a viewer of the main machine. cronward from its main branch at 44efc1a (2026-11-15), which is in cronward v0.2.0. Also this laptop (Omarchy 4.5.0-3, one 2560x1600 monitor at scale 2), a viewer of the same main machine, for the demo states that press keys. Also the main machine itself (Omarchy 4.0.6-1), which runs cronward, with Main machine blank, by hand; Hyprland and Quickshell there were not noted.",
+  "input_commit": "aaf0e596b13b31d8d61aaad91c88cb7ef198a242",
+  "date": "2026-11-16",
+  "platform": "Arch Linux, Omarchy 4.5.0-3, Hyprland 0.56.2, Quickshell 0.3.2 (r7), Node.js 22.23.3. This laptop (one 2560x1600 monitor at scale 2), with the widget linked from the checkout, as a viewer of the main machine, both on cronward v0.2.1. The main machine runs Omarchy 4.0.6-1.",
   "omarchy_version": "4.5.0-3",
   "commands": [
-    "./tests/run, on the desktop and on the laptop",
-    "omarchy plugin validate <installed plugin>",
-    "python3 <omarchy-plugin-test>/scripts/check_plain_text.py <checkout>, on the laptop",
-    "omarchy plugin add (README Install), then omarchy plugin update io.github.frestina.cronward and omarchy restart shell, on the desktop",
-    "omarchy bar set io.github.frestina.cronward host <main machine>, on the desktop",
-    "On the desktop: demo/run \"0,0 4320x760\" mixed unreachable timeout check-timeout workflows-list workflows-timeout",
-    "On the laptop: demo/run \"600,0 680x440\" didnt-run workflows-list timeout workflows-timeout add-timeout action-timeout check-timeout",
-    "By hand on the desktop, on real data: Check now, right click, a row's link, Config, Token, Set up with agent, Workflows, Add job, Run now, Remove, Remove account, a theme switch and a vertical bar",
-    "Set up with agent on the laptop, with the agent asked to read back the guide's path from its prompt",
-    "After the run: VERSION and manifest.json set to 0.2.0 and the README pointed at cronward v0.2.0 (015ec30), then ./tests/run, omarchy plugin validate and the plain-text check again on the laptop",
-    "On the laptop, at b8ae6ca (the v0.2.0 commit plus docs): omarchy plugin remove on the linked checkout, omarchy plugin add <repository> --enable --yes, omarchy bar set io.github.frestina.cronward host <main machine>, the clone set back to the v0.2.0 commit and then omarchy plugin update --yes and omarchy restart shell, and omarchy plugin remove --yes",
-    "By hand on the main machine (Omarchy 4.0.6-1), at b8ae6ca, installed with omarchy plugin add and Main machine left blank: the popup's header and jobs, Check now, right click, a row's link, Config, Workflows, Add job on a sandbox workflow, Run now, Remove, Set up with agent"
+    "On the main machine (from the cronward session): cronward v0.2.1 installed, cronward doctor, then its first tick on v0.2.1",
+    "cronward --version on the laptop (cronward 0.2.1)",
+    "./tests/run, on the laptop",
+    "omarchy plugin validate <checkout>",
+    "python3 <omarchy-plugin-test>/scripts/check_plain_text.py <checkout>",
+    "By hand on the laptop, on real data: Check now in the bar's popup"
   ],
   "results": [
-    "Portable checks (80 tests) pass on both machines; the Omarchy validator and the plain-text check pass. shellcheck is not installed on the desktop, so it ran on the laptop only.",
-    "Installed on the desktop by following the README: after setting the Main machine, the widget read the status the desktop's cronward viewer fetched, and Workflows listed the main machine's accounts and repos.",
-    "Every demo state on the desktop rendered in the theme's colours, the popup opened under the button on the first monitor, the count showed on all three bars, and shell.json was put back byte for byte.",
-    "The five no-answer states (status, Check now, Workflows, Add job, Run now) each said who gave no answer and in how long, and the popup did not stay busy. Add job and Run now said the change may have happened anyway, and the status was read again.",
-    "Check now moved 'as of' forward; right click opened cronward status in a terminal; a row opened its run on GitHub.",
-    "Config, Token and Set up with agent opened a terminal, GitHub's token page and the agent, on the main machine through cronward --on. The agent's prompt named docs/AGENT_SETUP.md in the installed plugin.",
-    "Add job on a workflow in a private test repo: the job showed in the jobs after the add, and a refused add showed cronward's reason in the form.",
-    "Run now and Remove each asked first; Cancel and Esc did nothing; a yes to Run now showed the row running, and a yes to Remove took the row away.",
-    "Remove account was dimmed, with the jobs named, while a job used the account.",
-    "A theme switch: the warning and 'on cronward' colours followed the new theme. A vertical bar showed the icon without the count, as designed.",
-    "015ec30 changes only the version numbers and the README since e0e1867, the commit tested by hand; the checks pass on it.",
-    "A fresh install from GitHub on the laptop cloned b8ae6ca and put the widget in the bar. With Main machine blank it said not set up, with the two commands; with it set it showed the main machine's jobs.",
-    "omarchy plugin update moved the clone from the v0.2.0 commit to b8ae6ca. After omarchy restart shell the Main machine setting was still there and the widget showed the jobs.",
-    "omarchy plugin remove deleted the plugin's folder and the widget's entry in shell.json, its settings with it. Nothing named for the plugin was left under ~/.config, ~/.cache, ~/.local/state, ~/.local/share or the runtime folder, and the rest of shell.json and cronward itself were as before.",
-    "b8ae6ca changes only docs/, CREDITS.md and ARCHITECTURE.md since 015ec30; the checks pass on it.",
-    "On the main machine with Main machine blank, as the user reported: the header read LAST TICK and listed the jobs; Check now read the status again with no error; right click opened cronward status in a terminal and a row opened its run on GitHub; Config opened the config; Workflows listed the accounts and repos; Add job added a job, which showed in the jobs; Run now and Remove each asked first, and a yes showed the row running and took the row away; Set up with agent started the agent with a prompt saying cronward runs on this machine."
+    "cronward doctor passed on the main machine with no warnings, and its first tick on v0.2.1 ran.",
+    "Portable checks (80 tests) pass; the Omarchy validator and the plain-text check pass.",
+    "Check now fetched the status through the laptop's cronward v0.2.1 viewer, the path the marketplace review flagged: the popup still showed the main machine's jobs, with no error. The status file the viewer wrote for the main machine has mode 600, as cronward v0.2.1's new atomic write creates it.",
+    "aaf0e59 changes only VERSION, manifest.json and the README's cronward requirement since 597b8ff, the v0.2.0 commit plus docs, whose acceptance (desktop, laptop, main machine, and install, update and removal) is in this file at 597b8ff."
   ],
   "limitations": [
-    "The no-answer states came from the demo's exit 124, not from a real ssh that hung; tests/deadline.test.mjs checks with a fake cronward that nothing is left running at the deadline or after a SIGTERM.",
-    "Not tried: a shell restart while a call runs. If Quickshell kills timeout with SIGKILL, only cronward's own limits (Frestina/cronward#51) stop its ssh.",
-    "The demo states that press keys (the add form, Run now, Remove, Remove account) were captured on the laptop only, so no key could reach another window on the desktop. On the desktop these buttons were used by hand.",
-    "Ask agent (on a failed or didn't-run job) was not clicked in this run; it was in the v0.1.0 acceptance.",
-    "The account key button has still only been seen, not clicked, against a real missing or expiring token.",
-    "On Omarchy 4.0.6 this version was tried by hand on the main machine only; the viewer, the demo states and the install, update and removal ran on 4.5.0."
+    "Only Check now was tried by hand on v0.2.1, because the widget's code did not change; the other buttons, the demo states and the install, update and removal were last run for v0.2.0 (this file at 597b8ff).",
+    "The desktop was reinstalled and has neither cronward nor the widget, so this run is on the laptop only.",
+    "The limitations listed for v0.2.0 still hold."
   ]
 }
