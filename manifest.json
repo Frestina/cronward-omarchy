@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.frestina.cronward",
   "name": "cronward",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": "Frestina",
   "license": "MIT",
   "description": "Whether the GitHub Actions workflows cronward starts on a schedule passed, failed or didn't run, from cronward's own results. Holds no token and makes no network calls of its own; works on the machine that runs cronward or on a laptop that watches it.",
