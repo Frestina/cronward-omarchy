@@ -1,25 +1,27 @@
 {
   "status": "passed",
-  "input_commit": "aaf0e596b13b31d8d61aaad91c88cb7ef198a242",
-  "date": "2026-11-16",
-  "platform": "Arch Linux, Omarchy 4.5.0-3, Hyprland 0.56.2, Quickshell 0.3.2 (r7), Node.js 22.23.3. This laptop (one 2560x1600 monitor at scale 2), with the widget linked from the checkout, as a viewer of the main machine, both on cronward v0.2.1. The main machine runs Omarchy 4.0.6-1.",
+  "input_commit": "3893ee34a1ff30d2e5b2a32f199d4adb14de4658",
+  "date": "2026-11-17",
+  "platform": "Arch Linux, Omarchy 4.5.0-3, Hyprland 0.56.2, Quickshell 0.3.2 (r7), Node.js 22.23.3. This laptop (one 2560x1600 monitor at scale 2), with the widget linked from the checkout, as a viewer of the main machine, both on cronward v0.2.2. The main machine runs Omarchy 4.0.6-1.",
   "omarchy_version": "4.5.0-3",
   "commands": [
-    "On the main machine (from the cronward session): cronward v0.2.1 installed, cronward doctor, then its first tick on v0.2.1",
-    "cronward --version on the laptop (cronward 0.2.1)",
+    "On the main machine (by the user): cronward v0.2.2 installed, then a tick on v0.2.2",
+    "cronward --version on the laptop (cronward 0.2.2)",
+    "cronward status --host <main machine> --json on the laptop, the call the widget makes",
     "./tests/run, on the laptop",
     "omarchy plugin validate <checkout>",
     "python3 <omarchy-plugin-test>/scripts/check_plain_text.py <checkout>",
     "By hand on the laptop, on real data: Check now in the bar's popup"
   ],
   "results": [
-    "cronward doctor passed on the main machine with no warnings, and its first tick on v0.2.1 ran.",
+    "A tick ran on the main machine on cronward v0.2.2.",
+    "On the laptop, cronward v0.2.2 gave the status the widget reads with the same fields as before (accounts, host, jobs, last_tick, now, schema, tick_error, viewer), no viewer error, and the main machine's job.",
     "Portable checks (80 tests) pass; the Omarchy validator and the plain-text check pass.",
-    "Check now fetched the status through the laptop's cronward v0.2.1 viewer, the path the marketplace review flagged: the popup still showed the main machine's jobs, with no error. The status file the viewer wrote for the main machine has mode 600, as cronward v0.2.1's new atomic write creates it.",
-    "aaf0e59 changes only VERSION, manifest.json and the README's cronward requirement since 597b8ff, the v0.2.0 commit plus docs, whose acceptance (desktop, laptop, main machine, and install, update and removal) is in this file at 597b8ff."
+    "Check now fetched the status through the laptop's cronward v0.2.2 viewer, the path the marketplace review flagged: the popup still showed the main machine's job, with no error.",
+    "3893ee3 changes only VERSION, manifest.json and the README's cronward requirement since 2036be2 (v0.2.1), which in turn changed only those since 597b8ff, the v0.2.0 commit plus docs, whose acceptance (desktop, laptop, main machine, and install, update and removal) is in this file at 597b8ff."
   ],
   "limitations": [
-    "Only Check now was tried by hand on v0.2.1, because the widget's code did not change; the other buttons, the demo states and the install, update and removal were last run for v0.2.0 (this file at 597b8ff).",
+    "Only Check now was tried by hand on v0.2.2, because the widget's code did not change; the other buttons, the demo states and the install, update and removal were last run for v0.2.0 (this file at 597b8ff).",
     "The desktop was reinstalled and has neither cronward nor the widget, so this run is on the laptop only.",
     "The limitations listed for v0.2.0 still hold."
   ]
