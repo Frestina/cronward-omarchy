@@ -103,7 +103,7 @@ ask before a test run or a push.
 ## Requirements
 
 - Omarchy 4.
-- [cronward v0.2.1](https://github.com/Frestina/cronward/releases/tag/v0.2.1)
+- [cronward v0.2.2](https://github.com/Frestina/cronward/releases/tag/v0.2.2)
   or later, on the laptop and on the main machine.
   - On the machine that runs cronward: nothing else.
   - On a laptop: cronward installed as a viewer of the main machine
