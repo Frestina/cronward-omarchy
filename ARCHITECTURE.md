@@ -31,7 +31,15 @@ user's own ssh.
 - A disabled job's old result is no problem, as in cronward's exit code.
 - Commands: `processArgv()` for a `Process` and `shellLine()` for a
   terminal both run the `cronward` setting, falling back to
-  `~/.local/bin/cronward` for the default. `processArgv()` runs it under
+  `~/.local/bin/cronward` for the default. Both first run `GATE`: it asks
+  `cronward --version` and runs nothing when that is older than `NEEDS`
+  (the README's requirement, checked by a test) or says no version, as an
+  older cronward writes its files unsafely; it exits `TOO_OLD` (3) with a
+  `cronward-widget:` line on stderr. `tooOld()` reads that, before
+  cronward's own exits, as the `outdated` kind in the status, the picker,
+  an add and an action, with the commands that update cronward here. Only
+  this machine's cronward is checked; through `--on` the main machine runs
+  its own. `processArgv()` runs cronward under
   coreutils `timeout -k 5`, with `deadline()`: 30 s for `status`, 60 for
   `watch`, 180 for `workflows`, 90 for the rest, through `--on` or not.
   `timeout` runs cronward in a process group of its own and stops the whole

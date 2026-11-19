@@ -203,9 +203,10 @@ test("commands: only cronward, through --on on a viewer", () => {
   assert.deepEqual(argv.slice(0, 2), ["sh", "-c"])
   assert.deepEqual(argv.slice(3), ["sh", "cronward", "30", "status", "--json"])
   assert.match(argv[2], /exec timeout -k 5 "\$s" "\$c" "\$@"$/)
+  assert.ok(argv[2].includes(View.GATE + '; exec timeout'))
   assert.equal(View.shellLine("/opt/my cronward", ["--on", "home'server", "edit"]),
-    "c='/opt/my cronward'; " + 'if [ "$c" = cronward ] && ! command -v cronward >/dev/null 2>&1; then c="$HOME/.local/bin/cronward"; fi; "$c" '
-    + "'--on' 'home'\\''server' 'edit'")
+    "c='/opt/my cronward'; " + 'if [ "$c" = cronward ] && ! command -v cronward >/dev/null 2>&1; then c="$HOME/.local/bin/cronward"; fi; '
+    + View.GATE + '; "$c" ' + "'--on' 'home'\\''server' 'edit'")
 })
 
 test("the commands find cronward, and fall back to ~/.local/bin only for the default", async () => {
@@ -214,7 +215,8 @@ test("the commands find cronward, and fall back to ~/.local/bin only for the def
   const path = await import("node:path")
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "cronward-widget-"))
   fs.mkdirSync(path.join(home, ".local/bin"), { recursive: true })
-  fs.writeFileSync(path.join(home, ".local/bin/cronward"), '#!/bin/sh\necho "fallback $*"\n', { mode: 0o755 })
+  fs.writeFileSync(path.join(home, ".local/bin/cronward"),
+    '#!/bin/sh\n[ "$1" = --version ] && { echo "cronward 0.2.2"; exit; }\necho "fallback $*"\n', { mode: 0o755 })
   const env = { HOME: home, PATH: "/usr/bin:/bin" }
   const run = (cmd, args) => { const [p, ...a] = View.processArgv(cmd, args); return execFileSync(p, a, { env, encoding: "utf8" }) }
   assert.equal(run("cronward", ["status", "--json"]), "fallback status --json\n")

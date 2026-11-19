@@ -20,6 +20,23 @@ var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oc
 var FIND = 'if [ "$c" = cronward ] && ! command -v cronward >/dev/null 2>&1; then '
   + 'c="$HOME/.local/bin/cronward"; fi'
 
+// The oldest cronward the widget runs, as in the README's Requirements (a
+// test checks they match). Older ones write their files unsafely
+// (Frestina/cronward#52, #53), so before every call GATE asks cronward its
+// version and runs nothing when it is older, or does not say: it exits
+// TOO_OLD with one line on stderr, which tooOld() reads. A cronward that is
+// not there still exits 127.
+var NEEDS = "0.2.2"
+var TOO_OLD = 3
+var UPDATE_PAGE = "https://github.com/Frestina/cronward#updating"
+var GATE = 'command -v "$c" >/dev/null 2>&1 || exit 127; '
+  + 'v=$(timeout -k 5 15 "$c" --version 2>/dev/null) || v=; v=${v#cronward }; '
+  + "case $v in [0-9]*[!0-9A-Za-z.+-]*|[!0-9]*|'') v=;; esac; "
+  + 'm=; if [ -z "$v" ]; then m="cronward did not say its version"; '
+  + 'elif ! printf "%s\\n" ' + NEEDS + ' "$v" | sort -V -C; then m="this is cronward $v"; fi; '
+  + 'if [ -n "$m" ]; then echo "cronward-widget: $m, and the widget needs cronward ' + NEEDS
+  + ' or later (' + UPDATE_PAGE + ')" >&2; exit ' + TOO_OLD + '; fi'
+
 function quote(value) {
   return "'" + String(value).replace(/'/g, "'\\''") + "'"
 }
@@ -107,7 +124,7 @@ function deadline(args) {
 // both at the deadline and when the widget stops it, so cronward's ssh goes
 // too (a stopped Process signals only its own child). seconds is for tests.
 function processArgv(command, args, seconds) {
-  return ["sh", "-c", 'c=$1; s=$2; shift 2; ' + FIND + '; exec timeout -k 5 "$s" "$c" "$@"', "sh",
+  return ["sh", "-c", 'c=$1; s=$2; shift 2; ' + FIND + '; ' + GATE + '; exec timeout -k 5 "$s" "$c" "$@"', "sh",
     command || "cronward", String(seconds || deadline(args))].concat(args)
 }
 
@@ -121,9 +138,24 @@ function noAnswer(run, args) {
     + deadline(args) + " s, so the widget stopped it"
 }
 
+// null unless GATE refused to run this machine's cronward; then what to do.
+function tooOld(run, host) {
+  var line = lastLine(run.stderr)
+  if (!run.started || run.exitCode !== TOO_OLD || !/^cronward-widget: /.test(line)) return null
+  var m = /^cronward-widget: this is cronward (\S+),/.exec(line)
+  // One command per line, so none wraps in the middle.
+  return { kind: "outdated", message: (m ? "cronward " + m[1] + " is too old"
+    : "This machine's cronward did not say its version, so it may be too old")
+    + " for this widget, which needs cronward " + NEEDS + " or later: older ones write "
+    + "their files unsafely, so the widget runs none of it. Update it here:\n"
+    + "cd ~/.local/share/cronward\n"
+    + "git pull --ff-only && ./install.sh\n"
+    + (host ? "cronward install --viewer " + host : "cronward install") }
+}
+
 // For a terminal or bar.run: a shell line that runs cronward with args.
 function shellLine(command, args) {
-  return "c=" + quote(command || "cronward") + "; " + FIND + '; "$c" ' + args.map(quote).join(" ")
+  return "c=" + quote(command || "cronward") + "; " + FIND + "; " + GATE + '; "$c" ' + args.map(quote).join(" ")
 }
 
 function terminal(line) {
@@ -261,6 +293,8 @@ function picker(run, host) {
   if (!run.started || run.exitCode === 127)
     return { kind: "missing", message: "cronward is not installed here: no `cronward` on the "
       + "shell's PATH and no ~/.local/bin/cronward.", accounts: [] }
+  var old = tooOld(run, host)
+  if (old) return { kind: "outdated", message: old.message, accounts: [] }
   var late = noAnswer(run, workflowsArgs(host))
   if (late) return { kind: "timeout", accounts: [], message: late + ". Press r to try again." }
   var data = null
@@ -408,6 +442,8 @@ function addResult(run, host) {
   if (!run.started || run.exitCode === 127)
     return { kind: "missing", message: "cronward is not installed here: no `cronward` on the "
       + "shell's PATH and no ~/.local/bin/cronward." }
+  var old = tooOld(run, host)
+  if (old) return old
   var late = noAnswer(run, onMain(host, ["add"]))
   if (late)
     return { kind: "timeout", recheck: true, message: late + ". The job may have been added "
@@ -485,6 +521,8 @@ function actionResult(act, run, host) {
   if (!run.started || run.exitCode === 127)
     return { kind: "missing", level: "bad", message: "cronward is not installed here: no "
       + "`cronward` on the shell's PATH and no ~/.local/bin/cronward." }
+  var old = tooOld(run, host)
+  if (old) return { kind: "outdated", level: "bad", message: old.message }
   var late = noAnswer(run, act.args)
   if (late)
     return { kind: "timeout", level: "warn", message: late + ". "
@@ -539,6 +577,8 @@ function classify(run, host) {
     return { kind: "missing", message: "cronward is not installed here: no `cronward` on the "
       + "shell's PATH and no ~/.local/bin/cronward. Install it, or set the widget's cronward "
       + "setting to its path." }
+  var old = tooOld(run, host)
+  if (old) return old
   var late = noAnswer(run, statusArgs(host))
   if (late) return { kind: "error", message: late + "." }
   var reason = lastLine(run.stderr)
@@ -694,6 +734,7 @@ function pluginDir(url) {
 
 if (typeof module !== "undefined") {
   module.exports = { STALE: STALE, TOKEN_PAGE: TOKEN_PAGE, INSTALL_PAGE: INSTALL_PAGE,
+    NEEDS: NEEDS, TOO_OLD: TOO_OLD, GATE: GATE, tooOld: tooOld,
     quote: quote, when: when, asData: asData, safeUrl: safeUrl, statusArgs: statusArgs,
     checkArgs: checkArgs, onMain: onMain, processArgv: processArgv, shellLine: shellLine,
     terminal: terminal, open: open, agent: agent, setupPrompt: setupPrompt,

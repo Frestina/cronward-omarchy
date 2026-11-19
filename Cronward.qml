@@ -116,6 +116,7 @@ Panel {
     if (view.header) return view.header
     return view.kind === "missing" ? "cronward not found"
       : view.kind === "notsetup" ? "not set up"
+      : view.kind === "outdated" ? "cronward too old"
       : "status failed"
   }
 
@@ -956,7 +957,8 @@ Panel {
               text: said
               wrapMode: Text.Wrap
               color: !root.pickerView || root.pickerView.kind === "list" ? root.dim(0.7)
-                : root.pickerView.kind === "error" || root.pickerView.kind === "missing" ? Color.urgent
+                : root.pickerView.kind === "error" || root.pickerView.kind === "missing"
+                  || root.pickerView.kind === "outdated" ? Color.urgent
                 : root.warnColor
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.bodySmall
@@ -1538,7 +1540,8 @@ Panel {
             text: said
             wrapMode: Text.Wrap
             color: root.addProblem === "" && root.addOutcome
-              && (root.addOutcome.kind === "missing" || root.addOutcome.kind === "unreachable")
+              && (root.addOutcome.kind === "missing" || root.addOutcome.kind === "unreachable"
+                || root.addOutcome.kind === "outdated")
               ? Color.urgent : root.warnColor
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.caption
