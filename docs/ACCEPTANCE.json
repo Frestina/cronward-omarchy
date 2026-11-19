@@ -1,27 +1,29 @@
 {
   "status": "passed",
-  "input_commit": "3893ee34a1ff30d2e5b2a32f199d4adb14de4658",
-  "date": "2026-11-17",
-  "platform": "Arch Linux, Omarchy 4.5.0-3, Hyprland 0.56.2, Quickshell 0.3.2 (r7), Node.js 22.23.3. This laptop (one 2560x1600 monitor at scale 2), with the widget linked from the checkout, as a viewer of the main machine, both on cronward v0.2.2. The main machine runs Omarchy 4.0.6-1.",
+  "input_commit": "a527f68bbe1a3932577e43943447a517e9b27606",
+  "date": "2026-11-19",
+  "platform": "Arch Linux, Omarchy 4.5.0-3, Hyprland 0.56.2, Quickshell 0.3.2 (r7), Node.js 22.23.3. This laptop (one 2560x1600 monitor at scale 2), with the widget linked from the checkout, as a viewer of the main machine, both on cronward v0.2.3. The main machine runs Omarchy 4.0.6-1.",
   "omarchy_version": "4.5.0-3",
   "commands": [
-    "On the main machine (by the user): cronward v0.2.2 installed, then a tick on v0.2.2",
-    "cronward --version on the laptop (cronward 0.2.2)",
-    "cronward status --host <main machine> --json on the laptop, the call the widget makes",
+    "On the main machine (by the user): cronward v0.2.3 installed, then a tick on v0.2.3",
+    "cronward --version on the laptop (cronward 0.2.3), and cronward --on <main machine> doctor (cronward 0.2.3 there)",
+    "cronward status --host <main machine> --json on the laptop through the widget's processArgv(), and after the tick cronward watch <main machine> and cronward status --host <main machine> --json",
     "./tests/run, on the laptop",
     "omarchy plugin validate <checkout>",
     "python3 <omarchy-plugin-test>/scripts/check_plain_text.py <checkout>",
-    "By hand on the laptop, on real data: Check now in the bar's popup"
+    "demo/run with the states cronward-old, workflows-main-old and add-main-old",
+    "By hand on the laptop, on real data (by the user): Check now and Workflows in the bar's popup"
   ],
   "results": [
-    "A tick ran on the main machine on cronward v0.2.2.",
-    "On the laptop, cronward v0.2.2 gave the status the widget reads with the same fields as before (accounts, host, jobs, last_tick, now, schema, tick_error, viewer), no viewer error, and the main machine's job.",
-    "Portable checks (80 tests) pass; the Omarchy validator and the plain-text check pass.",
-    "Check now fetched the status through the laptop's cronward v0.2.2 viewer, the path the marketplace review flagged: the popup still showed the main machine's job, with no error.",
-    "3893ee3 changes only VERSION, manifest.json and the README's cronward requirement since 2036be2 (v0.2.1), which in turn changed only those since 597b8ff, the v0.2.0 commit plus docs, whose acceptance (desktop, laptop, main machine, and install, update and removal) is in this file at 597b8ff."
+    "A tick ran on the main machine on cronward v0.2.3, with no tick error.",
+    "On the laptop, the widget's command path, with its version check, ran cronward v0.2.3 and read the main machine's status with its job and no viewer error. `--on` to the main machine passed cronward's own check of the far side's version.",
+    "Portable checks (87 tests) pass, including tests/gate.test.mjs; the Omarchy validator and the plain-text check pass.",
+    "The demo states showed the refusals: cronward 0.2.2 here shows `cronward too old` with the commands that update it, and a main machine on cronward 0.2.1 shows the same in red in the picker and the add form, naming the main machine.",
+    "Check now and Workflows worked by hand on real data, the latter through `cronward --on`."
   ],
   "limitations": [
-    "Only Check now was tried by hand on v0.2.2, because the widget's code did not change; the other buttons, the demo states and the install, update and removal were last run for v0.2.0 (this file at 597b8ff).",
+    "Only Check now and Workflows were tried by hand on v0.2.3; Add job, Run now, Remove, Config and Set up with agent run the same checked command path but were not clicked. The install, update and removal were last run for v0.2.0 (this file at 597b8ff).",
+    "A cronward too old here or on the main machine was seen only with the demo's fake cronward, not with a real old install.",
     "The desktop was reinstalled and has neither cronward nor the widget, so this run is on the laptop only.",
     "The limitations listed for v0.2.0 still hold."
   ]
