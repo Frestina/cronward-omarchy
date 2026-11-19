@@ -41,20 +41,20 @@ test("the requirement is the README's", () => {
 
 test("a cronward of the needed version or later runs", (t) => {
   const make = fakes(t)
-  for (const v of ["cronward 0.2.2", "cronward 0.2.10", "cronward 0.3.0", "cronward 1.0.0"])
+  for (const v of ["cronward 0.2.3", "cronward 0.2.10", "cronward 0.3.0", "cronward 1.0.0"])
     assert.equal(run(make(v), ["watch", "homeserver"]).stdout, "ran watch homeserver\n", v)
 })
 
 test("an older cronward, or one that does not say, runs nothing", (t) => {
   const make = fakes(t)
-  for (const v of ["cronward 0.2.1", "cronward 0.1.0", "cronward 0.2.1; rm -rf ~", "cronward", "hello", null]) {
+  for (const v of ["cronward 0.2.2", "cronward 0.2.1", "cronward 0.1.0", "cronward 0.2.1; rm -rf ~", "cronward", "hello", null]) {
     const r = run(make(v), ["watch", "homeserver"])
     assert.equal(r.exitCode, View.TOO_OLD, String(v))
     assert.equal(r.stdout, "", String(v))
     const old = View.tooOld(r, "homeserver")
     assert.equal(old.kind, "outdated")
-    assert.match(old.message, v === "cronward 0.2.1" ? /^cronward 0\.2\.1 is too old for this widget, which needs cronward 0\.2\.2 or later/
-      : v === "cronward 0.1.0" ? /^cronward 0\.1\.0 is too old/ : /^This machine's cronward did not say its version/)
+    assert.match(old.message, v === "cronward 0.2.1" ? /^cronward 0\.2\.1 is too old for this widget, which needs cronward 0\.2\.3 or later/
+      : v === "cronward 0.2.2" ? /^cronward 0\.2\.2 is too old/ : v === "cronward 0.1.0" ? /^cronward 0\.1\.0 is too old/ : /^This machine's cronward did not say its version/)
     assert.match(old.message, /\ncd ~\/\.local\/share\/cronward\ngit pull --ff-only && \.\/install\.sh\ncronward install --viewer homeserver$/)
   }
   assert.match(View.tooOld(run(make("cronward 0.2.1"), ["status", "--json"]), "").message, /\ncronward install$/)
@@ -82,8 +82,30 @@ test("a missing cronward still reads as missing", (t) => {
 test("the terminal's commands are refused too", (t) => {
   const make = fakes(t)
   const line = (bin) => View.shellLine(bin, ["--on", "homeserver", "edit"])
-  assert.equal(execFileSync("sh", ["-c", line(make("cronward 0.2.2"))], { encoding: "utf8" }), "ran --on homeserver edit\n")
+  assert.equal(execFileSync("sh", ["-c", line(make("cronward 0.2.3"))], { encoding: "utf8" }), "ran --on homeserver edit\n")
   assert.throws(() => execFileSync("sh", ["-c", line(make("cronward 0.2.1")) + "; echo after"], { stdio: "pipe" }),
     (e) => e.status === View.TOO_OLD && String(e.stdout) === ""
-      && /^cronward-widget: this is cronward 0\.2\.1, and the widget needs cronward 0\.2\.2 or later \(https:\/\/github\.com\/Frestina\/cronward#updating\)\n$/.test(String(e.stderr)))
+      && /^cronward-widget: this is cronward 0\.2\.1, and the widget needs cronward 0\.2\.3 or later \(https:\/\/github\.com\/Frestina\/cronward#updating\)\n$/.test(String(e.stderr)))
+})
+
+test("a main machine whose cronward --on refused reads as too old, naming it", () => {
+  const line = (rest) => ({ started: true, exitCode: 2, stdout: "", stderr: "cronward: cronward on homeserver " + rest + "\n" })
+  const old = line("is 0.2.1, older than 0.2.2: update it there")
+  const none = line("gives no version, so may be older than 0.2.2: update it there")
+  const fix = /\ncd ~\/\.local\/share\/cronward\ngit pull --ff-only && \.\/install\.sh\ncronward install$/
+  for (const r of [old, none]) {
+    const results = [View.picker(r, "homeserver"), View.addResult(r, "homeserver"),
+      View.actionResult({ kind: "remove", job: "x", args: ["--on", "homeserver", "remove", "x"] }, r, "homeserver")]
+    for (const got of results) {
+      assert.equal(got.kind, "outdated")
+      assert.match(got.message, fix)
+    }
+  }
+  assert.match(View.farTooOld(old.stderr, "homeserver").message,
+    /^cronward on homeserver is 0\.2\.1, too old: the main machine needs cronward 0\.2\.2 or later/)
+  assert.match(View.farTooOld(none.stderr, "homeserver").message,
+    /^cronward on homeserver did not say its version, so it may be too old/)
+  // Only cronward's own line, as the last line, and only its exact words.
+  assert.equal(View.farTooOld("cronward: cronward on homeserver is 0.2.1, older than 0.2.2: update it\n", "homeserver"), null)
+  assert.equal(View.farTooOld("cronward: cronward on homeserver is 0.2.1, older than 0.2.2: update it there\nmore\n", "homeserver"), null)
 })

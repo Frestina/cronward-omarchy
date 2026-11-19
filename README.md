@@ -103,11 +103,12 @@ ask before a test run or a push.
 ## Requirements
 
 - Omarchy 4.
-- [cronward v0.2.2](https://github.com/Frestina/cronward/releases/tag/v0.2.2)
+- [cronward v0.2.3](https://github.com/Frestina/cronward/releases/tag/v0.2.3)
   or later, on the laptop and on the main machine. The widget asks
-  cronward's version before each call and runs none older, as those write
-  their files unsafely: it shows `cronward too old` and the commands that
-  update it.
+  cronward's version before each call and runs none older, and cronward
+  v0.2.3 refuses to run an older one on the main machine through `--on`,
+  as older ones write their files unsafely: the widget shows `cronward too
+  old` and the commands that update it.
   - On the machine that runs cronward: nothing else.
   - On a laptop: cronward installed as a viewer of the main machine
     (`cronward install --viewer homeserver`). For the buttons that change
@@ -185,7 +186,7 @@ reads the status again to show it.
 | `a tick failed: ...` | cronward's last tick ended in an error. Orange. |
 | `this machine is offline` | This laptop had no network at the last fetch. Not a problem with the main machine. |
 | `cronward not found`, `not set up`, `status failed` | cronward isn't installed here, has no config (or no fetched status yet), or answered with an error. Never shown as fine. |
-| `cronward too old` | cronward here is older than v0.2.2, or did not say its version; the widget runs none of it until it is updated. |
+| `cronward too old` | cronward here is older than v0.2.3, or did not say its version; the widget runs none of it until it is updated. A button that changes the main machine says the same when cronward there is too old. |
 
 ## Update
 

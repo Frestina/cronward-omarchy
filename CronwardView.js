@@ -22,11 +22,12 @@ var FIND = 'if [ "$c" = cronward ] && ! command -v cronward >/dev/null 2>&1; the
 
 // The oldest cronward the widget runs, as in the README's Requirements (a
 // test checks they match). Older ones write their files unsafely
-// (Frestina/cronward#52, #53), so before every call GATE asks cronward its
+// (Frestina/cronward#52, #53), and from 0.2.3 `--on` refuses an older one on
+// the main machine (#55, see FAR_OLD). So before every call GATE asks cronward its
 // version and runs nothing when it is older, or does not say: it exits
 // TOO_OLD with one line on stderr, which tooOld() reads. A cronward that is
 // not there still exits 127.
-var NEEDS = "0.2.2"
+var NEEDS = "0.2.3"
 var TOO_OLD = 3
 var UPDATE_PAGE = "https://github.com/Frestina/cronward#updating"
 var GATE = 'command -v "$c" >/dev/null 2>&1 || exit 127; '
@@ -151,6 +152,23 @@ function tooOld(run, host) {
     + "cd ~/.local/share/cronward\n"
     + "git pull --ff-only && ./install.sh\n"
     + (host ? "cronward install --viewer " + host : "cronward install") }
+}
+
+// cronward's own line, from 0.2.3, when `--on` did not run the command because
+// the main machine's cronward is older than 0.2.2 or gives no version (#55).
+var FAR_OLD = /^cronward: cronward on (.+) (is ([0-9.]+), older|gives no version, so may be older) than ([0-9.]+): update it there$/
+
+function farTooOld(err, host) {
+  var lines = String(err || "").trim().split("\n")
+  var m = FAR_OLD.exec(lines[lines.length - 1])
+  if (!m) return null
+  return { kind: "outdated", message: "cronward on " + (host || m[1])
+    + (m[3] ? " is " + m[3] + ", too old" : " did not say its version, so it may be too old")
+    + ": the main machine needs cronward " + m[4] + " or later, as older ones write their "
+    + "files unsafely, so nothing ran there. Update it on " + (host || m[1]) + ":\n"
+    + "cd ~/.local/share/cronward\n"
+    + "git pull --ff-only && ./install.sh\n"
+    + "cronward install" }
 }
 
 // For a terminal or bar.run: a shell line that runs cronward with args.
@@ -323,10 +341,13 @@ function picker(run, host) {
 }
 
 // The ways `cronward --on HOST ...` fails before the command itself answers:
-// an ssh login that only reads the status, a cronward too old for the
-// command or for `--on`, or ssh failing. null when it is none of them.
+// a cronward on the main machine older than 0.2.2, an ssh login that only
+// reads the status, a cronward too old for the command or for `--on`, or ssh
+// failing. null when it is none of them.
 function onMainFailed(err, host, doing, tooOld) {
   var where = host || "this machine"
+  var far = farTooOld(err, host)
+  if (far) return far
   if (/this key only reads the status/.test(err))
     return { kind: "readonly", message: "The ssh login to " + where + " only reads the status, "
       + "so this machine cannot " + doing + ". That needs a login that can run commands there, "
@@ -734,7 +755,7 @@ function pluginDir(url) {
 
 if (typeof module !== "undefined") {
   module.exports = { STALE: STALE, TOKEN_PAGE: TOKEN_PAGE, INSTALL_PAGE: INSTALL_PAGE,
-    NEEDS: NEEDS, TOO_OLD: TOO_OLD, GATE: GATE, tooOld: tooOld,
+    NEEDS: NEEDS, TOO_OLD: TOO_OLD, GATE: GATE, tooOld: tooOld, farTooOld: farTooOld,
     quote: quote, when: when, asData: asData, safeUrl: safeUrl, statusArgs: statusArgs,
     checkArgs: checkArgs, onMain: onMain, processArgv: processArgv, shellLine: shellLine,
     terminal: terminal, open: open, agent: agent, setupPrompt: setupPrompt,

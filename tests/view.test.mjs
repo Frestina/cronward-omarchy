@@ -216,7 +216,7 @@ test("the commands find cronward, and fall back to ~/.local/bin only for the def
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "cronward-widget-"))
   fs.mkdirSync(path.join(home, ".local/bin"), { recursive: true })
   fs.writeFileSync(path.join(home, ".local/bin/cronward"),
-    '#!/bin/sh\n[ "$1" = --version ] && { echo "cronward 0.2.2"; exit; }\necho "fallback $*"\n', { mode: 0o755 })
+    '#!/bin/sh\n[ "$1" = --version ] && { echo "cronward 0.2.3"; exit; }\necho "fallback $*"\n', { mode: 0o755 })
   const env = { HOME: home, PATH: "/usr/bin:/bin" }
   const run = (cmd, args) => { const [p, ...a] = View.processArgv(cmd, args); return execFileSync(p, a, { env, encoding: "utf8" }) }
   assert.equal(run("cronward", ["status", "--json"]), "fallback status --json\n")

@@ -82,7 +82,7 @@ test("Check now that gave no answer says so; any other end says nothing", () => 
 function fake(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cronward-deadline-"))
   const bin = path.join(dir, "cronward")
-  fs.writeFileSync(bin, '#!/bin/sh\n[ "$1" = --version ] && { echo "cronward 0.2.2"; exit; }\n'
+  fs.writeFileSync(bin, '#!/bin/sh\n[ "$1" = --version ] && { echo "cronward 0.2.3"; exit; }\n'
     + 'sleep 300 &\necho $! >"$PIDFILE"\nwait\n', { mode: 0o755 })
   const f = { dir, bin, pidfile: path.join(dir, "pid"), pids: [] }
   t.after(() => {

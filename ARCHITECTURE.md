@@ -37,9 +37,11 @@ user's own ssh.
   older cronward writes its files unsafely; it exits `TOO_OLD` (3) with a
   `cronward-widget:` line on stderr. `tooOld()` reads that, before
   cronward's own exits, as the `outdated` kind in the status, the picker,
-  an add and an action, with the commands that update cronward here. Only
-  this machine's cronward is checked; through `--on` the main machine runs
-  its own. `processArgv()` runs cronward under
+  an add and an action, with the commands that update cronward here. The
+  main machine's cronward is checked by cronward 0.2.3 itself, in `--on`'s
+  ssh session: it exits 2 with a fixed line, which `farTooOld()` (`FAR_OLD`)
+  reads in `onMainFailed()` as the same `outdated` kind, naming the main
+  machine. `processArgv()` runs cronward under
   coreutils `timeout -k 5`, with `deadline()`: 30 s for `status`, 60 for
   `watch`, 180 for `workflows`, 90 for the rest, through `--on` or not.
   `timeout` runs cronward in a process group of its own and stops the whole

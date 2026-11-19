@@ -19,8 +19,10 @@
 # answer exits 124, as coreutils timeout does at the widget's deadline:
 # `status` in the state "timeout", `workflows` in "workflows-timeout", `add`
 # in "add-timeout", `run` and `remove` in "action-timeout", and `watch` (Check
-# now) in "check-timeout". `--version` says 0.2.2, or 0.2.1 in the state
-# "cronward-old", which the widget then refuses to run. Fictional names only.
+# now) in "check-timeout". `--version` says 0.2.3, or 0.2.2 in the state
+# "cronward-old", which the widget then refuses to run; in "workflows-main-old"
+# and "add-main-old" every `--on` call fails as cronward 0.2.3 does for a main machine with cronward
+# 0.2.1. Fictional names only.
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 state=$(head -n1 "${XDG_RUNTIME_DIR:-/tmp}/cronward-demo" 2>/dev/null || true)
@@ -29,7 +31,11 @@ removed=${XDG_RUNTIME_DIR:-/tmp}/cronward-demo-removed
 # A new state starts with every account back.
 [[ $(head -n1 "$removed" 2>/dev/null) == "$state" ]] || rm -f "$removed"
 if [[ ${1:-} == --version ]]; then
-  [[ $state == cronward-old ]] && echo "cronward 0.2.1" || echo "cronward 0.2.2"; exit 0
+  [[ $state == cronward-old ]] && echo "cronward 0.2.2" || echo "cronward 0.2.3"; exit 0
+fi
+if [[ ${1:-} == --on && $state == *-main-old ]]; then
+  sleep 1
+  echo "cronward: cronward on ${2:-} is 0.2.1, older than 0.2.2: update it there" >&2; exit 2
 fi
 # On a viewer the widget runs `cronward --on HOST ...`: the same here.
 if [[ ${1:-} == --on ]]; then shift 2; fi
